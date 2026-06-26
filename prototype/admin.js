@@ -97,8 +97,14 @@ function closeEditModal() {
 function exportCsv() {
   const header = ["社員ID", "社員名", "出勤", "退勤", "休憩", "実働", "認証", "状態"];
   const csv = [header, ...rows.map((row) => [
-    row.employeeId, row.name, row.clockIn, row.clockOut,
-    row.breakTime, row.workTime, row.auth, row.status
+    row.employeeId,
+    row.name,
+    row.clockIn,
+    row.clockOut,
+    row.breakTime,
+    row.workTime,
+    row.auth,
+    row.status
   ])].map((line) => line.map((cell) => `"${String(cell).replaceAll('"', '""')}"`).join(",")).join("\n");
 
   const blob = new Blob(["\ufeff" + csv], { type: "text/csv;charset=utf-8" });
@@ -125,7 +131,7 @@ function buildRows(employees, punches) {
     const clockIn = employeePunches.find((punch) => punch.punch_type === "clock_in");
     const clockOut = employeePunches.filter((punch) => punch.punch_type === "clock_out").at(-1);
     const invalidPunch = employeePunches.find((punch) => punch.status !== "valid");
-    const status = invalidPunch ? "確認要" : clockIn ? (clockOut ? "正常" : "未退勤") : "未打刻";
+    const status = invalidPunch ? "要確認" : clockIn ? (clockOut ? "正常" : "未退勤") : "未打刻";
     const statusType = status === "正常" ? "ok" : "warn";
 
     return {
@@ -150,27 +156,20 @@ async function loadDashboard() {
   }
 
   const { data: membership, error: membershipError } = await supabase
-    .from("company_users")
-    .select("company_id, display_name, role")
-    .limit(1)
+    .rpc("current_company_membership")
     .maybeSingle();
 
   if (membershipError || !membership) {
-    alert("このアカウントには会社の管理権限がありません。");
+    alert(`このアカウントには会社の管理権限がありません。\nログイン中: ${user.email ?? "-"}\n${membershipError?.message ?? ""}`);
     await supabase.auth.signOut();
     window.location.replace("./login.html");
     return;
   }
 
   companyId = membership.company_id;
-  const { data: company } = await supabase
-    .from("companies")
-    .select("company_code, name")
-    .eq("id", companyId)
-    .maybeSingle();
-
-  document.querySelector(".company-id").textContent = company?.company_code ?? "-";
-  document.querySelector(".sidebar-meta").innerHTML = `管理者: ${escapeHtml(membership.display_name)}<br>権限: ${escapeHtml(membership.role)}`;
+  document.querySelector(".company-id").textContent = membership.company_code ?? "-";
+  document.querySelector(".sidebar-meta").innerHTML =
+    `管理者: ${escapeHtml(membership.display_name)}<br>権限: ${escapeHtml(membership.role)}`;
 
   await loadAttendance();
 }
@@ -178,8 +177,19 @@ async function loadDashboard() {
 async function loadAttendance() {
   const { start, end } = startAndEndOfDay(dateInput.value);
   const [employeesResponse, punchesResponse] = await Promise.all([
-    supabase.from("employees").select("id, employee_code, display_name").eq("company_id", companyId).eq("is_active", true).order("employee_code"),
-    supabase.from("punch_records").select("employee_id, punch_type, auth_method, status, punched_at").eq("company_id", companyId).gte("punched_at", start).lt("punched_at", end).order("punched_at")
+    supabase
+      .from("employees")
+      .select("id, employee_code, display_name")
+      .eq("company_id", companyId)
+      .eq("is_active", true)
+      .order("employee_code"),
+    supabase
+      .from("punch_records")
+      .select("employee_id, punch_type, auth_method, status, punched_at")
+      .eq("company_id", companyId)
+      .gte("punched_at", start)
+      .lt("punched_at", end)
+      .order("punched_at")
   ]);
 
   if (employeesResponse.error || punchesResponse.error) {
@@ -204,7 +214,9 @@ editModal.addEventListener("click", (event) => {
   if (event.target === editModal) closeEditModal();
 });
 exportCsvButton.addEventListener("click", exportCsv);
-openTerminalButton.addEventListener("click", () => { window.location.href = "./index.html"; });
+openTerminalButton.addEventListener("click", () => {
+  window.location.href = "./index.html";
+});
 logoutButton.addEventListener("click", async () => {
   await supabase.auth.signOut();
   localStorage.removeItem("tqrSession");
