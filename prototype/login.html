@@ -336,11 +336,11 @@
         </div>
         <div class="field">
           <label for="loginId" id="loginIdLabel">管理者ID</label>
-          <input id="loginId" autocomplete="username" value="admin">
+          <input id="loginId" autocomplete="username" placeholder="admin@example.com">
         </div>
         <div class="field">
           <label for="password">PASS</label>
-          <input id="password" type="password" autocomplete="current-password" value="0000">
+          <input id="password" type="password" autocomplete="current-password">
         </div>
 
         <div class="error" id="loginError">会社ID・ID・PASSを確認してください。</div>
@@ -348,19 +348,19 @@
       </form>
 
       <div class="quick-links">
-        <button class="button secondary" type="button" id="demoAdminButton">管理画面を見る</button>
-        <button class="button secondary" type="button" id="demoTerminalButton">打刻端末を見る</button>
+        <button class="button secondary" type="button" id="demoAdminButton">管理者ログイン</button>
+        <button class="button secondary" type="button" id="demoTerminalButton">端末を試す</button>
       </div>
 
       <div class="hint">
         デモ認証情報<br>
-        管理者: TOTAL-001 / admin / 0000<br>
+        管理者: Supabaseで登録したメールアドレスとパスワード<br>
         端末: TOTAL-001 / TQR-TAB-001 / 0000
       </div>
     </section>
   </main>
 
-  <script>
+  <script type="text/plain">
     const adminTab = document.getElementById("adminTab");
     const terminalTab = document.getElementById("terminalTab");
     const loginForm = document.getElementById("loginForm");
@@ -425,5 +425,6 @@
       window.location.href = "./index.html";
     });
   </script>
+  <script type="module" src="./login.js"></script>
 </body>
 </html>
