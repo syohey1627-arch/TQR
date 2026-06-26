@@ -1,0 +1,2 @@
+[functions.record-punch]
+verify_jwt = false
