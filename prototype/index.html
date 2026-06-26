@@ -1,0 +1,1420 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>TQR Punch Terminal Prototype</title>
+  <style>
+    :root {
+      /*
+        Theme tokens
+        Change these values later to swap the visual identity without touching
+        the screen layout or punch behavior.
+      */
+      --brand-name: "TQR";
+      --app-name: "トータル勤怠TQR";
+      --logo-text: "TQR";
+      --app-background:
+        linear-gradient(135deg, rgba(17, 131, 79, 0.08), transparent 38%),
+        linear-gradient(315deg, rgba(37, 99, 235, 0.08), transparent 36%),
+        #f4f7f6;
+      --logo-image: none;
+      --bg: #f4f7f6;
+      --ink: #17211d;
+      --muted: #5d6b66;
+      --line: #d9e2de;
+      --panel: #ffffff;
+      --active: #11834f;
+      --active-dark: #0a5c37;
+      --clock-out: #c92d2d;
+      --break-in: #2563eb;
+      --break-out: #0f766e;
+      --leave: #c45f10;
+      --return: #6d3bbd;
+      --device-frame: #202827;
+      --camera-background: #dce8e3;
+      --shadow: 0 18px 45px rgba(23, 33, 29, 0.14);
+      font-family: "Yu Gothic UI", "Meiryo", system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      color: var(--ink);
+      background: var(--app-background);
+      display: grid;
+      place-items: center;
+      padding: 24px;
+    }
+
+    button {
+      font: inherit;
+    }
+
+    .prototype-shell {
+      width: min(1180px, 100%);
+    }
+
+    .device {
+      width: 100%;
+      aspect-ratio: 16 / 9;
+      min-height: 620px;
+      border: 14px solid var(--device-frame);
+      border-radius: 28px;
+      background: #101615;
+      box-shadow: var(--shadow);
+      padding: 10px;
+    }
+
+    .screen {
+      width: 100%;
+      height: 100%;
+      border-radius: 16px;
+      overflow: hidden;
+      background: var(--panel);
+      display: grid;
+      grid-template-rows: 74px minmax(0, 1fr) 82px;
+    }
+
+    .topbar {
+      display: grid;
+      grid-template-columns: 1fr auto auto;
+      gap: 18px;
+      align-items: center;
+      padding: 12px 24px;
+      color: #fff;
+      background: linear-gradient(90deg, var(--active-dark), var(--active));
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      min-width: 0;
+    }
+
+    .logo {
+      width: 46px;
+      height: 46px;
+      border: 2px solid rgba(255, 255, 255, 0.9);
+      border-radius: 10px;
+      display: grid;
+      place-items: center;
+      font-weight: 800;
+      letter-spacing: 0;
+      background-image: var(--logo-image);
+      background-position: center;
+      background-repeat: no-repeat;
+      background-size: contain;
+    }
+
+    .logo[data-has-image="true"] {
+      color: transparent;
+    }
+
+    .brand-title {
+      margin: 0;
+      font-size: 23px;
+      line-height: 1.15;
+    }
+
+    .brand-sub {
+      margin: 3px 0 0;
+      color: rgba(255, 255, 255, 0.82);
+      font-size: 13px;
+    }
+
+    .mode-pill,
+    .sync-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      min-height: 42px;
+      padding: 0 14px;
+      border: 1px solid rgba(255, 255, 255, 0.36);
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.16);
+      color: #fff;
+      white-space: nowrap;
+      font-weight: 700;
+    }
+
+    .main {
+      display: grid;
+      grid-template-columns: minmax(270px, 1fr) minmax(350px, 1.3fr) minmax(230px, 1fr);
+      gap: 14px;
+      padding: 14px 22px 12px;
+      background: #eef4f1;
+      min-height: 0;
+      overflow: hidden;
+    }
+
+    .panel {
+      min-width: 0;
+      min-height: 0;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: rgba(255, 255, 255, 0.92);
+      box-shadow: 0 8px 20px rgba(23, 33, 29, 0.06);
+      overflow: hidden;
+    }
+
+    .mode-panel {
+      background: var(--active);
+      color: #fff;
+      padding: 16px 20px;
+      display: grid;
+      align-content: stretch;
+      gap: 7px;
+    }
+
+    .mode-label {
+      margin: 0;
+      font-size: clamp(30px, 3.8vw, 46px);
+      line-height: 1;
+      font-weight: 900;
+      letter-spacing: 0;
+    }
+
+    .mode-caption {
+      margin: 0;
+      font-size: 15px;
+      line-height: 1.25;
+      color: rgba(255, 255, 255, 0.9);
+      font-weight: 700;
+    }
+
+    .countdown {
+      min-height: 34px;
+      padding: 8px 10px;
+      border-radius: 8px;
+      background: rgba(255, 255, 255, 0.16);
+      border: 1px solid rgba(255, 255, 255, 0.26);
+      font-size: 13px;
+      line-height: 1.25;
+    }
+
+    .mode-pass-title {
+      margin: 0;
+      font-size: 17px;
+      line-height: 1.25;
+      font-weight: 900;
+    }
+
+    .scan-panel {
+      padding: 16px 20px 12px;
+      display: grid;
+      grid-template-rows: auto 1fr auto;
+      gap: 12px;
+    }
+
+    .scan-title {
+      margin: 0;
+      text-align: center;
+      font-size: clamp(23px, 2.6vw, 32px);
+      line-height: 1.25;
+      font-weight: 900;
+    }
+
+    .camera {
+      min-height: 0;
+      border-radius: 8px;
+      background:
+        linear-gradient(rgba(13, 20, 18, 0.1) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(13, 20, 18, 0.1) 1px, transparent 1px),
+        var(--camera-background);
+      background-size: 28px 28px;
+      display: grid;
+      place-items: center;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .camera::before {
+      content: "";
+      position: absolute;
+      width: min(54%, 220px);
+      aspect-ratio: 1;
+      border: 6px solid var(--active);
+      border-radius: 18px;
+      box-shadow: 0 0 0 999px rgba(255, 255, 255, 0.22);
+    }
+
+    .camera::after {
+      content: "";
+      position: absolute;
+      width: 42%;
+      height: 3px;
+      background: rgba(17, 131, 79, 0.88);
+      animation: scanLine 2s ease-in-out infinite;
+    }
+
+    .qr-card {
+      position: relative;
+      z-index: 1;
+      width: 116px;
+      height: 136px;
+      border-radius: 8px;
+      background: #fff;
+      box-shadow: 0 12px 22px rgba(23, 33, 29, 0.2);
+      display: grid;
+      grid-template-rows: 1fr auto;
+      padding: 10px;
+      transform: rotate(-6deg);
+    }
+
+    .qr {
+      background:
+        linear-gradient(90deg, #111 12px, transparent 12px) 0 0 / 24px 24px,
+        linear-gradient(#111 12px, transparent 12px) 0 0 / 24px 24px,
+        #fff;
+      border: 8px solid #fff;
+      outline: 2px solid #111;
+    }
+
+    .qr-name {
+      margin-top: 8px;
+      text-align: center;
+      font-size: 12px;
+      font-weight: 800;
+    }
+
+    .scan-actions {
+      display: flex;
+      justify-content: center;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+
+    .primary-action,
+    .ghost-action {
+      min-height: 46px;
+      border-radius: 8px;
+      padding: 0 18px;
+      border: 1px solid var(--active);
+      cursor: pointer;
+      font-weight: 800;
+    }
+
+    .primary-action {
+      color: #fff;
+      background: var(--active);
+    }
+
+    .ghost-action {
+      color: var(--active-dark);
+      background: #fff;
+    }
+
+    .pass-panel {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 5px;
+      align-items: end;
+      padding: 9px;
+      border: 1px solid rgba(255, 255, 255, 0.34);
+      border-radius: 8px;
+      background: rgba(255, 255, 255, 0.14);
+    }
+
+    .pass-field {
+      min-width: 0;
+    }
+
+    .pass-field label {
+      display: block;
+      margin-bottom: 3px;
+      color: rgba(255, 255, 255, 0.86);
+      font-size: 12px;
+      font-weight: 900;
+    }
+
+    .pass-field input {
+      width: 100%;
+      min-height: 36px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 0 10px;
+      color: var(--ink);
+      background: #fff;
+      font: inherit;
+      font-weight: 800;
+    }
+
+    .pass-panel .ghost-action {
+      width: 100%;
+      margin-top: 2px;
+      min-height: 38px;
+      border-color: rgba(255, 255, 255, 0.88);
+      color: var(--active-dark);
+      background: #fff;
+    }
+
+    .result-panel {
+      padding: 14px 16px;
+      display: grid;
+      grid-template-rows: auto minmax(0, 1fr) auto;
+      gap: 10px;
+    }
+
+    .clock {
+      font-size: clamp(34px, 4.5vw, 52px);
+      line-height: 1;
+      font-weight: 900;
+      letter-spacing: 0;
+    }
+
+    .date {
+      margin-top: 4px;
+      color: var(--muted);
+      font-weight: 700;
+    }
+
+    .result-box {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 12px;
+      display: grid;
+      align-content: center;
+      gap: 8px;
+      background: #f9fbfa;
+    }
+
+    .result-kicker {
+      margin: 0;
+      color: var(--muted);
+      font-size: 13px;
+      font-weight: 700;
+    }
+
+    .result-main {
+      margin: 0;
+      font-size: clamp(20px, 2.5vw, 30px);
+      font-weight: 900;
+      line-height: 1.25;
+    }
+
+    .result-sub {
+      margin: 0;
+      color: var(--muted);
+      font-size: 14px;
+      line-height: 1.35;
+    }
+
+    .status-grid {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 6px;
+    }
+
+    .status-item {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 7px 8px;
+      background: #fff;
+    }
+
+    .status-label {
+      color: var(--muted);
+      font-size: 11px;
+      font-weight: 700;
+    }
+
+    .status-value {
+      margin-top: 2px;
+      font-size: 14px;
+      font-weight: 900;
+    }
+
+    .modebar {
+      display: grid;
+      grid-template-columns: repeat(6, 1fr) 90px;
+      gap: 10px;
+      align-items: center;
+      padding: 8px 18px;
+      border-top: 1px solid var(--line);
+      background: #fff;
+    }
+
+    .mode-button {
+      min-height: 58px;
+      border: 2px solid transparent;
+      border-radius: 8px;
+      cursor: pointer;
+      color: #fff;
+      font-size: clamp(15px, 1.5vw, 20px);
+      font-weight: 900;
+      display: grid;
+      place-items: center;
+      text-align: center;
+      line-height: 1.15;
+      transition: transform 180ms ease, box-shadow 180ms ease, border-color 180ms ease;
+    }
+
+    .mode-button:hover,
+    .mode-button:focus-visible {
+      transform: translateY(-1px);
+      box-shadow: 0 8px 18px rgba(23, 33, 29, 0.18);
+      outline: none;
+    }
+
+    .mode-button.is-active {
+      border-color: #111;
+      box-shadow: 0 0 0 3px rgba(17, 33, 29, 0.18);
+    }
+
+    .admin-button {
+      min-height: 58px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      cursor: pointer;
+      background: #f8faf9;
+      color: var(--ink);
+      font-weight: 900;
+    }
+
+    .modal-backdrop {
+      position: fixed;
+      inset: 0;
+      z-index: 30;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+      background: rgba(12, 18, 16, 0.58);
+    }
+
+    .modal-backdrop.is-open {
+      display: flex;
+    }
+
+    .modal {
+      width: min(980px, 100%);
+      max-height: min(720px, calc(100vh - 48px));
+      overflow: auto;
+      border-radius: 10px;
+      background: #fff;
+      border: 1px solid var(--line);
+      box-shadow: 0 26px 70px rgba(0, 0, 0, 0.28);
+    }
+
+    .modal-header,
+    .modal-footer {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 14px;
+      padding: 18px 22px;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .modal-footer {
+      border-top: 1px solid var(--line);
+      border-bottom: 0;
+      background: #f8faf9;
+    }
+
+    .modal-title {
+      margin: 0;
+      font-size: 22px;
+      line-height: 1.3;
+    }
+
+    .modal-body {
+      padding: 20px 22px;
+    }
+
+    .close-button,
+    .utility-button {
+      min-height: 44px;
+      border-radius: 8px;
+      border: 1px solid var(--line);
+      background: #fff;
+      color: var(--ink);
+      cursor: pointer;
+      font-weight: 800;
+      padding: 0 14px;
+    }
+
+    .utility-button.primary {
+      background: var(--active);
+      border-color: var(--active);
+      color: #fff;
+    }
+
+    .pin-grid {
+      display: grid;
+      grid-template-columns: minmax(220px, 340px) 1fr;
+      gap: 18px;
+      align-items: start;
+    }
+
+    .field-label {
+      display: block;
+      margin-bottom: 8px;
+      color: var(--muted);
+      font-size: 14px;
+      font-weight: 800;
+    }
+
+    .pin-input {
+      width: 100%;
+      min-height: 52px;
+      border-radius: 8px;
+      border: 1px solid var(--line);
+      padding: 0 14px;
+      font-size: 24px;
+      font-weight: 900;
+      letter-spacing: 0.18em;
+    }
+
+    .admin-grid {
+      display: none;
+      grid-template-columns: 280px 1fr;
+      gap: 18px;
+    }
+
+    .admin-grid.is-unlocked {
+      display: grid;
+    }
+
+    .admin-summary {
+      display: grid;
+      gap: 10px;
+    }
+
+    .summary-row {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 12px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #f9fbfa;
+      font-weight: 800;
+    }
+
+    .log-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 14px;
+    }
+
+    .log-table th,
+    .log-table td {
+      padding: 10px 9px;
+      border-bottom: 1px solid var(--line);
+      text-align: left;
+      white-space: nowrap;
+    }
+
+    .log-table th {
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 900;
+      background: #f8faf9;
+    }
+
+    .empty-log {
+      padding: 28px;
+      text-align: center;
+      color: var(--muted);
+      border: 1px dashed var(--line);
+      border-radius: 8px;
+    }
+
+    .toggle-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 14px;
+      padding: 12px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #fff;
+      font-weight: 800;
+    }
+
+    .switch {
+      position: relative;
+      width: 62px;
+      height: 34px;
+      flex: 0 0 auto;
+    }
+
+    .switch input {
+      position: absolute;
+      opacity: 0;
+    }
+
+    .switch span {
+      position: absolute;
+      inset: 0;
+      border-radius: 999px;
+      background: #cbd5d1;
+      cursor: pointer;
+      transition: background 180ms ease;
+    }
+
+    .switch span::after {
+      content: "";
+      position: absolute;
+      top: 4px;
+      left: 4px;
+      width: 26px;
+      height: 26px;
+      border-radius: 50%;
+      background: #fff;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.24);
+      transition: transform 180ms ease;
+    }
+
+    .switch input:checked + span {
+      background: var(--clock-out);
+    }
+
+    .switch input:checked + span::after {
+      transform: translateX(28px);
+    }
+
+    .helper {
+      margin: 14px 4px 0;
+      color: var(--muted);
+      font-size: 14px;
+      line-height: 1.6;
+    }
+
+    @keyframes scanLine {
+      0%, 100% {
+        transform: translateY(-90px);
+      }
+      50% {
+        transform: translateY(90px);
+      }
+    }
+
+    @media (max-width: 860px) {
+      body {
+        padding: 10px;
+      }
+
+      .device {
+        min-height: 560px;
+        border-width: 8px;
+        border-radius: 18px;
+      }
+
+      .screen {
+        grid-template-rows: 64px minmax(0, 1fr) 72px;
+      }
+
+      .topbar {
+        grid-template-columns: 1fr auto;
+        gap: 10px;
+        padding: 10px 14px;
+      }
+
+      .sync-pill {
+        display: none;
+      }
+
+      .brand-title {
+        font-size: 18px;
+      }
+
+      .main {
+        grid-template-columns: minmax(230px, 0.95fr) minmax(300px, 1.25fr) minmax(220px, 0.95fr);
+        gap: 10px;
+        padding: 10px;
+        overflow: hidden;
+      }
+
+      .mode-panel,
+      .scan-panel,
+      .result-panel {
+        padding: 12px;
+      }
+
+      .camera {
+        min-height: 0;
+      }
+
+      .modebar {
+        gap: 6px;
+        padding: 10px;
+        grid-template-columns: repeat(6, 1fr) 70px;
+      }
+
+      .mode-button,
+      .admin-button {
+        min-height: 50px;
+      }
+
+      .mode-label {
+        font-size: clamp(26px, 3.4vw, 38px);
+      }
+
+      .mode-caption,
+      .countdown {
+        font-size: 12px;
+      }
+
+      .pass-field input {
+        min-height: 32px;
+      }
+
+      .pass-panel .ghost-action {
+        min-height: 34px;
+      }
+
+      .status-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+
+      .result-main {
+        font-size: clamp(18px, 2.3vw, 24px);
+      }
+
+      .result-sub {
+        font-size: 12px;
+      }
+
+      .modal-backdrop {
+        padding: 10px;
+      }
+
+      .pin-grid,
+      .admin-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .log-table {
+        font-size: 12px;
+      }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      .camera::after,
+      .mode-button {
+        animation: none;
+        transition: none;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="prototype-shell">
+    <section class="device" aria-label="TQR横向き打刻端末プロトタイプ">
+      <div class="screen">
+        <header class="topbar" id="topbar">
+          <div class="brand">
+            <div class="logo" aria-hidden="true">TQR</div>
+            <div>
+              <h1 class="brand-title">トータル勤怠TQR</h1>
+              <p class="brand-sub">QR打刻端末 / 端末ID TQR-TAB-001</p>
+            </div>
+          </div>
+          <div class="mode-pill" id="modePill">出勤モード</div>
+          <div class="sync-pill">同期済み / 未同期 0件</div>
+        </header>
+
+        <section class="main">
+          <aside class="panel mode-panel" id="modePanel">
+            <p class="mode-label" id="modeLabel">出勤</p>
+            <p class="mode-caption" id="modeCaption">00:00-13:30は出勤モードです。</p>
+            <p class="mode-pass-title">PASS打刻</p>
+            <form class="pass-panel" id="passPunchForm" aria-label="PASS打刻">
+              <div class="pass-field">
+                <label for="companyIdInput">会社ID</label>
+                <input id="companyIdInput" name="companyId" autocomplete="organization" value="TOTAL-001">
+              </div>
+              <div class="pass-field">
+                <label for="employeeIdInput">従業員ID</label>
+                <input id="employeeIdInput" name="employeeId" autocomplete="username" value="E-0007">
+              </div>
+              <div class="pass-field">
+                <label for="employeePassInput">PASS</label>
+                <input id="employeePassInput" name="employeePass" type="password" inputmode="numeric" autocomplete="current-password" value="1234">
+              </div>
+              <button class="ghost-action" type="submit">PASSで打刻</button>
+            </form>
+            <div class="countdown" id="countdown">通常モードで待機中</div>
+          </aside>
+
+          <section class="panel scan-panel" aria-label="QR読み取り">
+            <h2 class="scan-title">QRコードをかざしてください</h2>
+            <div class="camera">
+              <div class="qr-card" aria-label="サンプル社員QRカード">
+                <div class="qr"></div>
+                <div class="qr-name">社員QR</div>
+              </div>
+            </div>
+            <div class="scan-actions">
+              <button class="primary-action" type="button" id="scanButton">読み取りテスト</button>
+              <button class="ghost-action" type="button" id="normalButton">通常モードへ戻る</button>
+            </div>
+          </section>
+
+          <aside class="panel result-panel">
+            <div>
+              <div class="clock" id="clock">09:18</div>
+              <div class="date" id="dateText">2026/06/25 木</div>
+            </div>
+
+            <div class="result-box" aria-live="polite">
+              <p class="result-kicker" id="resultKicker">読み取り待機</p>
+              <p class="result-main" id="resultMain">社員QRを読み取ると結果を表示します</p>
+              <p class="result-sub" id="resultSub">読み取り後、社員名・打刻種別・時刻を大きく表示します。</p>
+            </div>
+
+            <div class="status-grid">
+              <div class="status-item">
+                <div class="status-label">通信状態</div>
+                <div class="status-value" id="networkValue">Wi-Fi</div>
+              </div>
+              <div class="status-item">
+                <div class="status-label">未同期</div>
+                <div class="status-value" id="unsyncedValue">0件</div>
+              </div>
+              <div class="status-item">
+                <div class="status-label">保存期間</div>
+                <div class="status-value" id="retentionValue">7日</div>
+              </div>
+              <div class="status-item">
+                <div class="status-label">端末</div>
+                <div class="status-value">登録済</div>
+              </div>
+            </div>
+          </aside>
+        </section>
+
+        <nav class="modebar" aria-label="打刻種別">
+          <button class="mode-button is-active" type="button" data-mode="clockIn" style="background:#11834f">出勤</button>
+          <button class="mode-button" type="button" data-mode="clockOut" style="background:#c92d2d">退勤</button>
+          <button class="mode-button" type="button" data-mode="breakIn" style="background:#2563eb">休憩<br>入り</button>
+          <button class="mode-button" type="button" data-mode="breakOut" style="background:#0f766e">休憩<br>戻り</button>
+          <button class="mode-button" type="button" data-mode="leave" style="background:#c45f10">中抜け</button>
+          <button class="mode-button" type="button" data-mode="return" style="background:#6d3bbd">中戻り</button>
+          <button class="admin-button" type="button" id="adminButton">管理</button>
+        </nav>
+      </div>
+    </section>
+    <p class="helper">プロトタイプです。出勤・退勤以外を押すと一時モードとして5分カウントダウン表示に切り替わります。 <a href="./admin.html">管理画面を開く</a> / <a href="./login.html">ログインへ戻る</a></p>
+  </main>
+
+  <div class="modal-backdrop" id="adminModal" role="dialog" aria-modal="true" aria-labelledby="adminTitle">
+    <section class="modal">
+      <header class="modal-header">
+        <div>
+          <h2 class="modal-title" id="adminTitle">管理メニュー</h2>
+          <div class="date">PIN: 0000 でプロトタイプを解除できます</div>
+        </div>
+        <button class="close-button" type="button" id="closeAdminButton">閉じる</button>
+      </header>
+
+      <div class="modal-body">
+        <div class="pin-grid" id="pinArea">
+          <div>
+            <label class="field-label" for="pinInput">管理者PIN</label>
+            <input class="pin-input" id="pinInput" type="password" inputmode="numeric" maxlength="4" autocomplete="off">
+          </div>
+          <div>
+            <p class="result-kicker">プロトタイプ用の簡易ロックです</p>
+            <p class="result-sub">本実装では会社ID、管理者権限、端末登録状態を確認してから設定やCSV出力を許可します。</p>
+            <button class="utility-button primary" type="button" id="unlockButton">解除</button>
+          </div>
+        </div>
+
+        <div class="admin-grid" id="adminArea">
+          <aside class="admin-summary">
+            <div class="summary-row"><span>会社ID</span><span>TOTAL-001</span></div>
+            <div class="summary-row"><span>端末ID</span><span>TQR-TAB-001</span></div>
+            <div class="summary-row"><span>未同期</span><span id="adminUnsynced">0件</span></div>
+            <div class="summary-row"><span>本日打刻</span><span id="adminPunchCount">0件</span></div>
+            <label class="toggle-row">
+              <span>オフラインモード</span>
+              <span class="switch">
+                <input type="checkbox" id="offlineToggle">
+                <span aria-hidden="true"></span>
+              </span>
+            </label>
+            <button class="utility-button primary" type="button" id="exportCsvButton">CSV出力</button>
+            <button class="utility-button" type="button" id="syncButton">未同期を同期</button>
+            <button class="utility-button" type="button" id="clearLogButton">ログをリセット</button>
+          </aside>
+
+          <section>
+            <h3 class="modal-title">打刻履歴</h3>
+            <div id="logTableWrap" style="margin-top:12px"></div>
+          </section>
+        </div>
+      </div>
+
+      <footer class="modal-footer">
+        <span class="result-sub">CSVは画面上のサンプル打刻ログから生成します。</span>
+        <button class="utility-button" type="button" id="lockButton">ロック</button>
+      </footer>
+    </section>
+  </div>
+
+  <script>
+    const modes = {
+      clockIn: {
+        label: "出勤",
+        pill: "出勤モード",
+        color: "#11834f",
+        dark: "#0a5c37",
+        caption: "00:00-13:30は出勤モードです。",
+        temporary: false
+      },
+      clockOut: {
+        label: "退勤",
+        pill: "退勤モード",
+        color: "#c92d2d",
+        dark: "#8f1f1f",
+        caption: "13:31-23:59は退勤モードです。",
+        temporary: false
+      },
+      breakIn: {
+        label: "休憩入り",
+        pill: "休憩入りモード",
+        color: "#2563eb",
+        dark: "#1e3f9c",
+        caption: "5分後に通常モードへ戻ります。",
+        temporary: true
+      },
+      breakOut: {
+        label: "休憩戻り",
+        pill: "休憩戻りモード",
+        color: "#0f766e",
+        dark: "#0c4d48",
+        caption: "5分後に通常モードへ戻ります。",
+        temporary: true
+      },
+      leave: {
+        label: "中抜け",
+        pill: "中抜けモード",
+        color: "#c45f10",
+        dark: "#8b4109",
+        caption: "5分後に通常モードへ戻ります。",
+        temporary: true
+      },
+      return: {
+        label: "中戻り",
+        pill: "中戻りモード",
+        color: "#6d3bbd",
+        dark: "#4c2788",
+        caption: "5分後に通常モードへ戻ります。",
+        temporary: true
+      }
+    };
+
+    const topbar = document.getElementById("topbar");
+    const modePanel = document.getElementById("modePanel");
+    const modeLabel = document.getElementById("modeLabel");
+    const modeCaption = document.getElementById("modeCaption");
+    const modePill = document.getElementById("modePill");
+    const countdown = document.getElementById("countdown");
+    const clock = document.getElementById("clock");
+    const dateText = document.getElementById("dateText");
+    const resultKicker = document.getElementById("resultKicker");
+    const resultMain = document.getElementById("resultMain");
+    const resultSub = document.getElementById("resultSub");
+    const buttons = Array.from(document.querySelectorAll(".mode-button"));
+    const scanButton = document.getElementById("scanButton");
+    const normalButton = document.getElementById("normalButton");
+    const passPunchForm = document.getElementById("passPunchForm");
+    const companyIdInput = document.getElementById("companyIdInput");
+    const employeeIdInput = document.getElementById("employeeIdInput");
+    const employeePassInput = document.getElementById("employeePassInput");
+    const adminButton = document.getElementById("adminButton");
+    const adminModal = document.getElementById("adminModal");
+    const closeAdminButton = document.getElementById("closeAdminButton");
+    const pinInput = document.getElementById("pinInput");
+    const unlockButton = document.getElementById("unlockButton");
+    const pinArea = document.getElementById("pinArea");
+    const adminArea = document.getElementById("adminArea");
+    const offlineToggle = document.getElementById("offlineToggle");
+    const exportCsvButton = document.getElementById("exportCsvButton");
+    const syncButton = document.getElementById("syncButton");
+    const clearLogButton = document.getElementById("clearLogButton");
+    const lockButton = document.getElementById("lockButton");
+    const logTableWrap = document.getElementById("logTableWrap");
+    const networkValue = document.getElementById("networkValue");
+    const unsyncedValue = document.getElementById("unsyncedValue");
+    const retentionValue = document.getElementById("retentionValue");
+    const adminUnsynced = document.getElementById("adminUnsynced");
+    const adminPunchCount = document.getElementById("adminPunchCount");
+
+    let currentMode = getAutoMode();
+    let temporaryUntil = null;
+    let countdownTimer = null;
+    let manualModeOverride = false;
+    let isOffline = false;
+    let punchLogs = [];
+    let audioContext = null;
+
+    function getAutoMode() {
+      const now = new Date();
+      const minutes = now.getHours() * 60 + now.getMinutes();
+      return minutes <= 13 * 60 + 30 ? "clockIn" : "clockOut";
+    }
+
+    function formatTime(date) {
+      return new Intl.DateTimeFormat("ja-JP", {
+        hour: "2-digit",
+        minute: "2-digit",
+        hour12: false
+      }).format(date);
+    }
+
+    function formatDate(date) {
+      return new Intl.DateTimeFormat("ja-JP", {
+        year: "numeric",
+        month: "2-digit",
+        day: "2-digit",
+        weekday: "short"
+      }).format(date);
+    }
+
+    function renderMode(modeKey) {
+      const mode = modes[modeKey];
+      currentMode = modeKey;
+      document.documentElement.style.setProperty("--active", mode.color);
+      document.documentElement.style.setProperty("--active-dark", mode.dark);
+      topbar.style.background = `linear-gradient(90deg, ${mode.dark}, ${mode.color})`;
+      modePanel.style.background = mode.color;
+      modeLabel.textContent = mode.label;
+      modeCaption.textContent = mode.caption;
+      modePill.textContent = mode.pill;
+      buttons.forEach((button) => {
+        button.classList.toggle("is-active", button.dataset.mode === modeKey);
+      });
+    }
+
+    function setMode(modeKey) {
+      clearInterval(countdownTimer);
+      const mode = modes[modeKey];
+      if (mode.temporary) {
+        temporaryUntil = Date.now() + 5 * 60 * 1000;
+        countdownTimer = setInterval(updateCountdown, 250);
+        updateCountdown();
+      } else {
+        temporaryUntil = null;
+        countdown.textContent = "通常モードで待機中";
+      }
+      renderMode(modeKey);
+    }
+
+    function updateCountdown() {
+      if (!temporaryUntil) return;
+      const remaining = Math.max(0, temporaryUntil - Date.now());
+      if (remaining === 0) {
+        manualModeOverride = false;
+        setMode(getAutoMode());
+        return;
+      }
+      const minutes = Math.floor(remaining / 60000);
+      const seconds = Math.floor((remaining % 60000) / 1000);
+      countdown.textContent = `あと ${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")} で通常モードへ戻ります`;
+    }
+
+    function tickClock() {
+      const now = new Date();
+      clock.textContent = formatTime(now);
+      dateText.textContent = formatDate(now);
+      if (!temporaryUntil && !manualModeOverride && currentMode !== getAutoMode()) {
+        setMode(getAutoMode());
+      }
+    }
+
+    function createPunchLog(mode, now, employee, authMethod) {
+      return {
+        id: crypto.randomUUID ? crypto.randomUUID() : String(Date.now()),
+        companyId: employee.companyId,
+        employeeId: employee.employeeId,
+        employeeName: employee.employeeName,
+        mode: mode.label,
+        authMethod,
+        date: new Intl.DateTimeFormat("ja-JP", {
+          year: "numeric",
+          month: "2-digit",
+          day: "2-digit"
+        }).format(now),
+        time: formatTime(now),
+        deviceId: "TQR-TAB-001",
+        synced: !isOffline
+      };
+    }
+
+    function getAudioContext() {
+      const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+      if (!AudioContextClass) return null;
+      if (!audioContext) audioContext = new AudioContextClass();
+      return audioContext;
+    }
+
+    function playTone(frequency, startTime, duration, volume) {
+      const context = getAudioContext();
+      if (!context) return;
+      const oscillator = context.createOscillator();
+      const gain = context.createGain();
+      oscillator.type = "sine";
+      oscillator.frequency.setValueAtTime(frequency, startTime);
+      gain.gain.setValueAtTime(0.0001, startTime);
+      gain.gain.exponentialRampToValueAtTime(volume, startTime + 0.02);
+      gain.gain.exponentialRampToValueAtTime(0.0001, startTime + duration);
+      oscillator.connect(gain);
+      gain.connect(context.destination);
+      oscillator.start(startTime);
+      oscillator.stop(startTime + duration + 0.03);
+    }
+
+    function playSuccessSound() {
+      const context = getAudioContext();
+      if (!context) return;
+      const now = context.currentTime;
+      playTone(880, now, 0.16, 0.16);
+      playTone(1175, now + 0.18, 0.22, 0.15);
+    }
+
+    function playWarningSound() {
+      const context = getAudioContext();
+      if (!context) return;
+      const now = context.currentTime;
+      playTone(180, now, 0.11, 0.18);
+      playTone(145, now + 0.13, 0.16, 0.18);
+    }
+
+    function findDuplicatePunch(employee, mode, now) {
+      const punchDate = new Intl.DateTimeFormat("ja-JP", {
+        year: "numeric",
+        month: "2-digit",
+        day: "2-digit"
+      }).format(now);
+
+      return punchLogs
+        .slice()
+        .reverse()
+        .find((log) =>
+          log.companyId === employee.companyId &&
+          log.employeeId === employee.employeeId &&
+          log.date === punchDate &&
+          log.mode === mode.label
+        );
+    }
+
+    function updateStatus() {
+      const unsyncedCount = punchLogs.filter((log) => !log.synced).length;
+      networkValue.textContent = isOffline ? "オフライン" : "Wi-Fi";
+      unsyncedValue.textContent = `${unsyncedCount}件`;
+      retentionValue.textContent = isOffline ? "2か月" : "7日";
+      adminUnsynced.textContent = `${unsyncedCount}件`;
+      adminPunchCount.textContent = `${punchLogs.length}件`;
+      offlineToggle.checked = isOffline;
+      document.querySelector(".sync-pill").textContent = isOffline
+        ? `オフライン / 未同期 ${unsyncedCount}件`
+        : `同期済み / 未同期 ${unsyncedCount}件`;
+      renderLogTable();
+    }
+
+    function renderLogTable() {
+      if (!punchLogs.length) {
+        logTableWrap.innerHTML = '<div class="empty-log">まだ打刻ログがありません。読み取りテストを実行するとここに表示されます。</div>';
+        return;
+      }
+
+      const rows = punchLogs.slice().reverse().map((log) => `
+        <tr>
+          <td>${log.date}</td>
+          <td>${log.time}</td>
+          <td>${log.employeeName}</td>
+          <td>${log.mode}</td>
+          <td>${log.authMethod}</td>
+          <td>${log.deviceId}</td>
+          <td>${log.synced ? "同期済み" : "未同期"}</td>
+        </tr>
+      `).join("");
+
+      logTableWrap.innerHTML = `
+        <table class="log-table">
+          <thead>
+            <tr>
+              <th>日付</th>
+              <th>時刻</th>
+              <th>社員名</th>
+              <th>種別</th>
+              <th>認証</th>
+              <th>端末</th>
+              <th>状態</th>
+            </tr>
+          </thead>
+          <tbody>${rows}</tbody>
+        </table>
+      `;
+    }
+
+    function openAdmin() {
+      adminModal.classList.add("is-open");
+      pinInput.value = "";
+      pinInput.focus();
+    }
+
+    function closeAdmin() {
+      adminModal.classList.remove("is-open");
+    }
+
+    function unlockAdmin() {
+      if (pinInput.value !== "0000") {
+        pinInput.select();
+        resultKicker.textContent = "管理PINエラー";
+        resultMain.textContent = "PINが違います";
+        resultSub.textContent = "プロトタイプでは 0000 を入力してください。";
+        return;
+      }
+      pinArea.style.display = "none";
+      adminArea.classList.add("is-unlocked");
+    }
+
+    function lockAdmin() {
+      pinArea.style.display = "grid";
+      adminArea.classList.remove("is-unlocked");
+      pinInput.value = "";
+    }
+
+    function exportCsv() {
+      const header = ["会社ID", "社員ID", "社員名", "日付", "時刻", "打刻種別", "認証方式", "端末ID", "同期状態"];
+      const lines = punchLogs.map((log) => [
+        log.companyId,
+        log.employeeId,
+        log.employeeName,
+        log.date,
+        log.time,
+        log.mode,
+        log.authMethod,
+        log.deviceId,
+        log.synced ? "同期済み" : "未同期"
+      ]);
+      const csv = [header, ...lines]
+        .map((row) => row.map((cell) => `"${String(cell).replaceAll('"', '""')}"`).join(","))
+        .join("\n");
+      const blob = new Blob(["\ufeff" + csv], { type: "text/csv;charset=utf-8" });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = "tqr-punch-log-sample.csv";
+      link.click();
+      URL.revokeObjectURL(url);
+    }
+
+    buttons.forEach((button) => {
+      button.addEventListener("click", () => {
+        manualModeOverride = true;
+        setMode(button.dataset.mode);
+      });
+    });
+
+    function recordPunch(employee, authMethod) {
+      const mode = modes[currentMode];
+      const now = new Date();
+      const duplicate = findDuplicatePunch(employee, mode, now);
+
+      if (duplicate) {
+        playWarningSound();
+        resultKicker.textContent = "二重打刻の可能性";
+        resultMain.textContent = `${employee.employeeName}さんは本日すでに${mode.label}済みです`;
+        resultSub.textContent = `${duplicate.time} に${duplicate.authMethod}で${mode.label}記録があります。今回の打刻は保存していません。`;
+        return;
+      }
+
+      const log = createPunchLog(mode, now, employee, authMethod);
+      punchLogs.push(log);
+      playSuccessSound();
+      resultKicker.textContent = "読み取り完了";
+      resultMain.textContent = `${employee.employeeName}さん ${mode.label}`;
+      resultSub.textContent = isOffline
+        ? `${formatTime(now)} に${authMethod}で認証し、端末内DBへ保存しました。通信復帰後に同期します。`
+        : `${formatTime(now)} に${authMethod}で認証し、端末内DBへ保存してクラウド同期しました。`;
+      updateStatus();
+    }
+
+    scanButton.addEventListener("click", () => {
+      recordPunch({
+        companyId: "TOTAL-001",
+        employeeId: "E-0007",
+        employeeName: "山田 太郎"
+      }, "QR");
+    });
+
+    passPunchForm.addEventListener("submit", (event) => {
+      event.preventDefault();
+      const companyId = companyIdInput.value.trim();
+      const employeeId = employeeIdInput.value.trim();
+      const pass = employeePassInput.value.trim();
+
+      if (companyId !== "TOTAL-001" || employeeId !== "E-0007" || pass !== "1234") {
+        playWarningSound();
+        resultKicker.textContent = "PASS認証エラー";
+        resultMain.textContent = "会社ID・従業員ID・PASSを確認してください";
+        resultSub.textContent = "プロトタイプでは TOTAL-001 / E-0007 / 1234 をサンプル認証情報にしています。";
+        return;
+      }
+
+      recordPunch({
+        companyId,
+        employeeId,
+        employeeName: "山田 太郎"
+      }, "PASS");
+    });
+
+    normalButton.addEventListener("click", () => {
+      manualModeOverride = false;
+      setMode(getAutoMode());
+    });
+    adminButton.addEventListener("click", openAdmin);
+    closeAdminButton.addEventListener("click", closeAdmin);
+    unlockButton.addEventListener("click", unlockAdmin);
+    lockButton.addEventListener("click", lockAdmin);
+    pinInput.addEventListener("keydown", (event) => {
+      if (event.key === "Enter") unlockAdmin();
+    });
+    adminModal.addEventListener("click", (event) => {
+      if (event.target === adminModal) closeAdmin();
+    });
+    offlineToggle.addEventListener("change", () => {
+      isOffline = offlineToggle.checked;
+      updateStatus();
+    });
+    syncButton.addEventListener("click", () => {
+      if (isOffline) {
+        resultKicker.textContent = "同期できません";
+        resultMain.textContent = "オフラインモードです";
+        resultSub.textContent = "オフラインモードを解除してから同期してください。";
+        return;
+      }
+      punchLogs = punchLogs.map((log) => ({ ...log, synced: true }));
+      resultKicker.textContent = "同期完了";
+      resultMain.textContent = "未同期データを同期しました";
+      resultSub.textContent = "管理画面とCSV出力に反映できる状態です。";
+      updateStatus();
+    });
+    clearLogButton.addEventListener("click", () => {
+      punchLogs = [];
+      resultKicker.textContent = "ログをリセット";
+      resultMain.textContent = "打刻履歴を空にしました";
+      resultSub.textContent = "プロトタイプ上のサンプルデータだけを削除しています。";
+      updateStatus();
+    });
+    exportCsvButton.addEventListener("click", exportCsv);
+
+    setMode(currentMode);
+    tickClock();
+    updateStatus();
+    setInterval(tickClock, 1000);
+  </script>
+</body>
+</html>

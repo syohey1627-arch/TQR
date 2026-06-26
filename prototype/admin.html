@@ -1,0 +1,725 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>TQR Admin Prototype</title>
+  <style>
+    :root {
+      --bg: #f5f7f6;
+      --panel: #ffffff;
+      --ink: #14201b;
+      --muted: #5d6b66;
+      --line: #dce4e0;
+      --brand: #107747;
+      --brand-dark: #0b5735;
+      --danger: #c92d2d;
+      --blue: #2563eb;
+      --warning: #c45f10;
+      --shadow: 0 12px 30px rgba(20, 32, 27, 0.08);
+      font-family: "Yu Gothic UI", "Meiryo", system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      color: var(--ink);
+      background: var(--bg);
+    }
+
+    button,
+    input,
+    select {
+      font: inherit;
+    }
+
+    .app {
+      min-height: 100vh;
+      display: grid;
+      grid-template-columns: 232px minmax(0, 1fr);
+    }
+
+    .sidebar {
+      background: #10241c;
+      color: #fff;
+      padding: 22px 18px;
+      display: grid;
+      grid-template-rows: auto 1fr auto;
+      gap: 24px;
+    }
+
+    .logo-row {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .logo {
+      width: 44px;
+      height: 44px;
+      border: 2px solid rgba(255, 255, 255, 0.86);
+      border-radius: 8px;
+      display: grid;
+      place-items: center;
+      font-weight: 900;
+    }
+
+    .product-name {
+      margin: 0;
+      font-size: 18px;
+      line-height: 1.2;
+    }
+
+    .company-id {
+      margin: 3px 0 0;
+      color: rgba(255, 255, 255, 0.72);
+      font-size: 12px;
+      font-weight: 700;
+    }
+
+    .nav {
+      display: grid;
+      gap: 8px;
+      align-content: start;
+    }
+
+    .nav button {
+      min-height: 44px;
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      border-radius: 8px;
+      color: rgba(255, 255, 255, 0.82);
+      background: transparent;
+      cursor: pointer;
+      text-align: left;
+      padding: 0 12px;
+      font-weight: 800;
+    }
+
+    .nav button.is-active {
+      color: #fff;
+      background: rgba(255, 255, 255, 0.14);
+      border-color: rgba(255, 255, 255, 0.28);
+    }
+
+    .sidebar-meta {
+      color: rgba(255, 255, 255, 0.72);
+      font-size: 12px;
+      line-height: 1.6;
+    }
+
+    .main {
+      min-width: 0;
+      display: grid;
+      grid-template-rows: auto 1fr;
+    }
+
+    .topbar {
+      min-height: 78px;
+      background: #fff;
+      border-bottom: 1px solid var(--line);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      padding: 16px 24px;
+    }
+
+    .page-title {
+      margin: 0;
+      font-size: 24px;
+      line-height: 1.2;
+    }
+
+    .page-sub {
+      margin: 5px 0 0;
+      color: var(--muted);
+      font-size: 13px;
+      font-weight: 700;
+    }
+
+    .actions {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+    }
+
+    .button {
+      min-height: 42px;
+      border-radius: 8px;
+      border: 1px solid var(--line);
+      background: #fff;
+      color: var(--ink);
+      cursor: pointer;
+      padding: 0 14px;
+      font-weight: 900;
+    }
+
+    .button.primary {
+      border-color: var(--brand);
+      background: var(--brand);
+      color: #fff;
+    }
+
+    .content {
+      padding: 22px 24px 28px;
+      display: grid;
+      gap: 18px;
+      align-content: start;
+    }
+
+    .filters {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(150px, 1fr)) auto;
+      gap: 12px;
+      align-items: end;
+      padding: 16px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #fff;
+      box-shadow: var(--shadow);
+    }
+
+    .field label {
+      display: block;
+      margin-bottom: 6px;
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 900;
+    }
+
+    .field input,
+    .field select {
+      width: 100%;
+      min-height: 42px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      color: var(--ink);
+      background: #fff;
+      padding: 0 10px;
+      font-weight: 800;
+    }
+
+    .summary-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 14px;
+    }
+
+    .summary {
+      min-height: 112px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #fff;
+      padding: 16px;
+      box-shadow: var(--shadow);
+    }
+
+    .summary-label {
+      color: var(--muted);
+      font-size: 13px;
+      font-weight: 900;
+    }
+
+    .summary-value {
+      margin-top: 10px;
+      font-size: 32px;
+      line-height: 1;
+      font-weight: 900;
+    }
+
+    .summary-note {
+      margin-top: 8px;
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 700;
+    }
+
+    .grid-two {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 340px;
+      gap: 18px;
+      align-items: start;
+    }
+
+    .panel {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #fff;
+      box-shadow: var(--shadow);
+      overflow: hidden;
+    }
+
+    .panel-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 16px;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .panel-title {
+      margin: 0;
+      font-size: 18px;
+      line-height: 1.3;
+    }
+
+    .table-wrap {
+      overflow-x: auto;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      min-width: 860px;
+      font-size: 14px;
+    }
+
+    th,
+    td {
+      padding: 12px 14px;
+      border-bottom: 1px solid var(--line);
+      text-align: left;
+      white-space: nowrap;
+    }
+
+    th {
+      color: var(--muted);
+      background: #f8faf9;
+      font-size: 12px;
+      font-weight: 900;
+    }
+
+    tr:last-child td {
+      border-bottom: 0;
+    }
+
+    .status {
+      display: inline-flex;
+      align-items: center;
+      min-height: 26px;
+      border-radius: 999px;
+      padding: 0 10px;
+      font-size: 12px;
+      font-weight: 900;
+    }
+
+    .status.ok {
+      color: var(--brand-dark);
+      background: #e8f5ef;
+    }
+
+    .status.warn {
+      color: #8b4109;
+      background: #fff2df;
+    }
+
+    .status.error {
+      color: #8f1f1f;
+      background: #fde8e8;
+    }
+
+    .side-list {
+      display: grid;
+      gap: 12px;
+      padding: 16px;
+    }
+
+    .device-row,
+    .employee-row {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 12px;
+      background: #fbfcfb;
+    }
+
+    .row-title {
+      margin: 0;
+      font-weight: 900;
+    }
+
+    .row-meta {
+      margin: 5px 0 0;
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.5;
+      font-weight: 700;
+    }
+
+    .modal-backdrop {
+      position: fixed;
+      inset: 0;
+      z-index: 20;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+      background: rgba(16, 36, 28, 0.58);
+    }
+
+    .modal-backdrop.is-open {
+      display: flex;
+    }
+
+    .modal {
+      width: min(620px, 100%);
+      border-radius: 10px;
+      border: 1px solid var(--line);
+      background: #fff;
+      box-shadow: 0 24px 60px rgba(0, 0, 0, 0.26);
+      overflow: hidden;
+    }
+
+    .modal-body {
+      display: grid;
+      gap: 14px;
+      padding: 18px;
+    }
+
+    .modal-footer {
+      display: flex;
+      justify-content: flex-end;
+      gap: 10px;
+      padding: 14px 18px;
+      background: #f8faf9;
+      border-top: 1px solid var(--line);
+    }
+
+    @media (max-width: 980px) {
+      .app {
+        grid-template-columns: 1fr;
+      }
+
+      .sidebar {
+        display: none;
+      }
+
+      .filters,
+      .summary-grid,
+      .grid-two {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <aside class="sidebar">
+      <div class="logo-row">
+        <div class="logo">TQR</div>
+        <div>
+          <p class="product-name">トータル勤怠TQR</p>
+          <p class="company-id">TOTAL-001</p>
+        </div>
+      </div>
+      <nav class="nav" aria-label="管理メニュー">
+        <button class="is-active" type="button">日次集計</button>
+        <button type="button">打刻一覧</button>
+        <button type="button">従業員</button>
+        <button type="button">端末</button>
+        <button type="button">CSV出力</button>
+        <button type="button">設定</button>
+      </nav>
+      <div class="sidebar-meta">
+        管理者: total-admin<br>
+        最終同期: 2026/06/25 11:12<br>
+        プロトタイプ
+      </div>
+    </aside>
+
+    <main class="main">
+      <header class="topbar">
+        <div>
+          <h1 class="page-title">日次集計</h1>
+          <p class="page-sub">打刻端末から同期された勤怠を確認・修正・CSV出力します。</p>
+        </div>
+        <div class="actions">
+          <button class="button" type="button" id="openTerminalButton">打刻端末を開く</button>
+          <button class="button" type="button" id="logoutButton">ログアウト</button>
+          <button class="button primary" type="button" id="exportCsvButton">CSV出力</button>
+        </div>
+      </header>
+
+      <section class="content">
+        <form class="filters" id="filterForm">
+          <div class="field">
+            <label for="dateInput">対象日</label>
+            <input id="dateInput" type="date" value="2026-06-25">
+          </div>
+          <div class="field">
+            <label for="siteSelect">拠点</label>
+            <select id="siteSelect">
+              <option>本社</option>
+              <option>第2倉庫</option>
+              <option>現場A</option>
+            </select>
+          </div>
+          <div class="field">
+            <label for="employeeSearch">従業員</label>
+            <input id="employeeSearch" placeholder="社員名・ID">
+          </div>
+          <div class="field">
+            <label for="statusSelect">状態</label>
+            <select id="statusSelect">
+              <option>すべて</option>
+              <option>正常</option>
+              <option>要確認</option>
+              <option>未同期</option>
+            </select>
+          </div>
+          <button class="button primary" type="submit">表示</button>
+        </form>
+
+        <section class="summary-grid" aria-label="集計サマリー">
+          <div class="summary">
+            <div class="summary-label">出勤人数</div>
+            <div class="summary-value" id="presentCount">4</div>
+            <div class="summary-note">本日の出勤記録あり</div>
+          </div>
+          <div class="summary">
+            <div class="summary-label">未退勤</div>
+            <div class="summary-value" id="openCount">2</div>
+            <div class="summary-note">退勤漏れ確認対象</div>
+          </div>
+          <div class="summary">
+            <div class="summary-label">要確認</div>
+            <div class="summary-value" id="warningCount">2</div>
+            <div class="summary-note">二重打刻・修正あり</div>
+          </div>
+          <div class="summary">
+            <div class="summary-label">未同期</div>
+            <div class="summary-value" id="unsyncedCount">1</div>
+            <div class="summary-note">端末側に未同期あり</div>
+          </div>
+        </section>
+
+        <section class="grid-two">
+          <section class="panel">
+            <div class="panel-header">
+              <h2 class="panel-title">打刻一覧</h2>
+              <button class="button" type="button" id="addCorrectionButton">手動修正</button>
+            </div>
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>社員ID</th>
+                    <th>社員名</th>
+                    <th>出勤</th>
+                    <th>退勤</th>
+                    <th>休憩</th>
+                    <th>実働</th>
+                    <th>認証</th>
+                    <th>状態</th>
+                    <th>操作</th>
+                  </tr>
+                </thead>
+                <tbody id="attendanceBody"></tbody>
+              </table>
+            </div>
+          </section>
+
+          <aside class="panel">
+            <div class="panel-header">
+              <h2 class="panel-title">端末・従業員</h2>
+            </div>
+            <div class="side-list">
+              <div class="device-row">
+                <p class="row-title">TQR-TAB-001</p>
+                <p class="row-meta">本社 / Wi-Fi / 同期済み / 未同期 0件</p>
+              </div>
+              <div class="device-row">
+                <p class="row-title">TQR-TAB-002</p>
+                <p class="row-meta">現場A / オフライン / 未同期 1件</p>
+              </div>
+              <div class="employee-row">
+                <p class="row-title">QR発行待ち</p>
+                <p class="row-meta">佐藤 花子 / E-0010</p>
+              </div>
+              <div class="employee-row">
+                <p class="row-title">PASS打刻許可</p>
+                <p class="row-meta">本社: 有効 / 現場A: 有効</p>
+              </div>
+            </div>
+          </aside>
+        </section>
+      </section>
+    </main>
+  </div>
+
+  <div class="modal-backdrop" id="editModal" role="dialog" aria-modal="true" aria-labelledby="editTitle">
+    <section class="modal">
+      <div class="panel-header">
+        <h2 class="panel-title" id="editTitle">打刻修正</h2>
+        <button class="button" type="button" id="closeModalButton">閉じる</button>
+      </div>
+      <form class="modal-body" id="editForm">
+        <div class="field">
+          <label for="editEmployee">社員名</label>
+          <input id="editEmployee" value="山田 太郎">
+        </div>
+        <div class="field">
+          <label for="editClockIn">出勤</label>
+          <input id="editClockIn" type="time" value="08:55">
+        </div>
+        <div class="field">
+          <label for="editClockOut">退勤</label>
+          <input id="editClockOut" type="time" value="18:04">
+        </div>
+        <div class="field">
+          <label for="editReason">修正理由</label>
+          <input id="editReason" placeholder="例: 打刻漏れのため管理者修正">
+        </div>
+      </form>
+      <div class="modal-footer">
+        <button class="button" type="button" id="cancelEditButton">キャンセル</button>
+        <button class="button primary" type="button" id="saveEditButton">保存</button>
+      </div>
+    </section>
+  </div>
+
+  <script>
+    const rows = [
+      {
+        employeeId: "E-0007",
+        name: "山田 太郎",
+        clockIn: "08:55",
+        clockOut: "18:04",
+        breakTime: "01:00",
+        workTime: "08:09",
+        auth: "QR",
+        status: "正常",
+        statusType: "ok"
+      },
+      {
+        employeeId: "E-0008",
+        name: "鈴木 一郎",
+        clockIn: "07:42",
+        clockOut: "",
+        breakTime: "01:00",
+        workTime: "-",
+        auth: "PASS",
+        status: "未退勤",
+        statusType: "warn"
+      },
+      {
+        employeeId: "E-0009",
+        name: "田中 美咲",
+        clockIn: "09:02",
+        clockOut: "17:31",
+        breakTime: "00:45",
+        workTime: "07:44",
+        auth: "QR",
+        status: "修正あり",
+        statusType: "warn"
+      },
+      {
+        employeeId: "E-0010",
+        name: "佐藤 花子",
+        clockIn: "08:58",
+        clockOut: "",
+        breakTime: "-",
+        workTime: "-",
+        auth: "未同期",
+        status: "未同期",
+        statusType: "error"
+      }
+    ];
+
+    const attendanceBody = document.getElementById("attendanceBody");
+    const editModal = document.getElementById("editModal");
+    const exportCsvButton = document.getElementById("exportCsvButton");
+    const addCorrectionButton = document.getElementById("addCorrectionButton");
+    const closeModalButton = document.getElementById("closeModalButton");
+    const cancelEditButton = document.getElementById("cancelEditButton");
+    const saveEditButton = document.getElementById("saveEditButton");
+    const openTerminalButton = document.getElementById("openTerminalButton");
+    const logoutButton = document.getElementById("logoutButton");
+    const filterForm = document.getElementById("filterForm");
+
+    function renderRows() {
+      attendanceBody.innerHTML = rows.map((row, index) => `
+        <tr>
+          <td>${row.employeeId}</td>
+          <td>${row.name}</td>
+          <td>${row.clockIn || "-"}</td>
+          <td>${row.clockOut || "-"}</td>
+          <td>${row.breakTime}</td>
+          <td>${row.workTime}</td>
+          <td>${row.auth}</td>
+          <td><span class="status ${row.statusType}">${row.status}</span></td>
+          <td><button class="button" type="button" data-edit="${index}">修正</button></td>
+        </tr>
+      `).join("");
+    }
+
+    function openEditModal(index) {
+      const row = rows[index] || rows[0];
+      document.getElementById("editEmployee").value = row.name;
+      document.getElementById("editClockIn").value = row.clockIn || "";
+      document.getElementById("editClockOut").value = row.clockOut || "";
+      editModal.classList.add("is-open");
+    }
+
+    function closeEditModal() {
+      editModal.classList.remove("is-open");
+    }
+
+    function exportCsv() {
+      const header = ["社員ID", "社員名", "出勤", "退勤", "休憩", "実働", "認証", "状態"];
+      const csv = [header, ...rows.map((row) => [
+        row.employeeId,
+        row.name,
+        row.clockIn,
+        row.clockOut,
+        row.breakTime,
+        row.workTime,
+        row.auth,
+        row.status
+      ])].map((line) => line.map((cell) => `"${String(cell).replaceAll('"', '""')}"`).join(",")).join("\n");
+
+      const blob = new Blob(["\ufeff" + csv], { type: "text/csv;charset=utf-8" });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = "tqr-admin-attendance-sample.csv";
+      link.click();
+      URL.revokeObjectURL(url);
+    }
+
+    attendanceBody.addEventListener("click", (event) => {
+      const button = event.target.closest("[data-edit]");
+      if (!button) return;
+      openEditModal(Number(button.dataset.edit));
+    });
+
+    addCorrectionButton.addEventListener("click", () => openEditModal(0));
+    closeModalButton.addEventListener("click", closeEditModal);
+    cancelEditButton.addEventListener("click", closeEditModal);
+    saveEditButton.addEventListener("click", closeEditModal);
+    editModal.addEventListener("click", (event) => {
+      if (event.target === editModal) closeEditModal();
+    });
+    exportCsvButton.addEventListener("click", exportCsv);
+    openTerminalButton.addEventListener("click", () => {
+      window.location.href = "./index.html";
+    });
+    logoutButton.addEventListener("click", () => {
+      localStorage.removeItem("tqrSession");
+      window.location.href = "./login.html";
+    });
+    filterForm.addEventListener("submit", (event) => {
+      event.preventDefault();
+      renderRows();
+    });
+
+    renderRows();
+  </script>
+</body>
+</html>

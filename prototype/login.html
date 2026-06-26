@@ -1,0 +1,429 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>TQR Login Prototype</title>
+  <style>
+    :root {
+      --bg: #f4f7f6;
+      --panel: #ffffff;
+      --ink: #14201b;
+      --muted: #5f6e68;
+      --line: #dce4e0;
+      --brand: #107747;
+      --brand-dark: #0b5735;
+      --danger: #c92d2d;
+      --shadow: 0 18px 50px rgba(20, 32, 27, 0.12);
+      font-family: "Yu Gothic UI", "Meiryo", system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      color: var(--ink);
+      background:
+        linear-gradient(135deg, rgba(16, 119, 71, 0.1), transparent 34%),
+        linear-gradient(315deg, rgba(37, 99, 235, 0.08), transparent 32%),
+        var(--bg);
+      display: grid;
+      place-items: center;
+      padding: 24px;
+    }
+
+    button,
+    input {
+      font: inherit;
+    }
+
+    .login-shell {
+      width: min(1040px, 100%);
+      display: grid;
+      grid-template-columns: minmax(0, 0.9fr) minmax(360px, 440px);
+      gap: 24px;
+      align-items: stretch;
+    }
+
+    .intro,
+    .login-panel {
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      background: rgba(255, 255, 255, 0.94);
+      box-shadow: var(--shadow);
+      overflow: hidden;
+    }
+
+    .intro {
+      padding: 34px;
+      display: grid;
+      align-content: space-between;
+      min-height: 560px;
+      background:
+        linear-gradient(135deg, rgba(16, 119, 71, 0.92), rgba(11, 87, 53, 0.96)),
+        var(--brand);
+      color: #fff;
+    }
+
+    .brand-row {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+    }
+
+    .logo {
+      width: 52px;
+      height: 52px;
+      border: 2px solid rgba(255, 255, 255, 0.9);
+      border-radius: 10px;
+      display: grid;
+      place-items: center;
+      font-weight: 900;
+    }
+
+    .brand-name {
+      margin: 0;
+      font-size: 24px;
+      line-height: 1.2;
+    }
+
+    .brand-sub {
+      margin: 4px 0 0;
+      color: rgba(255, 255, 255, 0.78);
+      font-size: 13px;
+      font-weight: 800;
+    }
+
+    .intro-copy h1 {
+      margin: 0;
+      font-size: clamp(34px, 4vw, 52px);
+      line-height: 1.12;
+      letter-spacing: 0;
+    }
+
+    .intro-copy p {
+      max-width: 520px;
+      margin: 18px 0 0;
+      color: rgba(255, 255, 255, 0.86);
+      font-size: 17px;
+      line-height: 1.7;
+      font-weight: 700;
+    }
+
+    .intro-metrics {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 12px;
+      margin-top: 32px;
+    }
+
+    .metric {
+      min-height: 92px;
+      border: 1px solid rgba(255, 255, 255, 0.22);
+      border-radius: 8px;
+      padding: 14px;
+      background: rgba(255, 255, 255, 0.1);
+    }
+
+    .metric-value {
+      font-size: 24px;
+      font-weight: 900;
+    }
+
+    .metric-label {
+      margin-top: 6px;
+      color: rgba(255, 255, 255, 0.78);
+      font-size: 12px;
+      line-height: 1.5;
+      font-weight: 800;
+    }
+
+    .login-panel {
+      padding: 28px;
+      display: grid;
+      align-content: center;
+    }
+
+    .panel-title {
+      margin: 0;
+      font-size: 28px;
+      line-height: 1.2;
+    }
+
+    .panel-sub {
+      margin: 8px 0 0;
+      color: var(--muted);
+      font-size: 14px;
+      line-height: 1.6;
+      font-weight: 700;
+    }
+
+    .tabs {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+      margin: 24px 0 18px;
+      padding: 4px;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      background: #f8faf9;
+    }
+
+    .tab {
+      min-height: 44px;
+      border: 0;
+      border-radius: 8px;
+      background: transparent;
+      color: var(--muted);
+      cursor: pointer;
+      font-weight: 900;
+    }
+
+    .tab.is-active {
+      color: #fff;
+      background: var(--brand);
+    }
+
+    .form {
+      display: grid;
+      gap: 14px;
+    }
+
+    .field label {
+      display: block;
+      margin-bottom: 6px;
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 900;
+    }
+
+    .field input {
+      width: 100%;
+      min-height: 48px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #fff;
+      color: var(--ink);
+      padding: 0 12px;
+      font-weight: 800;
+    }
+
+    .field input:focus {
+      outline: 3px solid rgba(16, 119, 71, 0.18);
+      border-color: var(--brand);
+    }
+
+    .error {
+      display: none;
+      padding: 12px;
+      border: 1px solid #f1b8b8;
+      border-radius: 8px;
+      color: #8f1f1f;
+      background: #fff0f0;
+      font-size: 13px;
+      line-height: 1.5;
+      font-weight: 800;
+    }
+
+    .error.is-visible {
+      display: block;
+    }
+
+    .button {
+      min-height: 50px;
+      border: 1px solid var(--brand);
+      border-radius: 8px;
+      background: var(--brand);
+      color: #fff;
+      cursor: pointer;
+      font-weight: 900;
+    }
+
+    .button.secondary {
+      border-color: var(--line);
+      color: var(--ink);
+      background: #fff;
+    }
+
+    .quick-links {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      margin-top: 14px;
+    }
+
+    .hint {
+      margin-top: 18px;
+      padding: 14px;
+      border-radius: 8px;
+      background: #f8faf9;
+      border: 1px solid var(--line);
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.65;
+      font-weight: 700;
+    }
+
+    @media (max-width: 860px) {
+      body {
+        padding: 12px;
+      }
+
+      .login-shell {
+        grid-template-columns: 1fr;
+      }
+
+      .intro {
+        min-height: auto;
+        gap: 28px;
+      }
+
+      .intro-metrics {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="login-shell">
+    <section class="intro" aria-label="TQR概要">
+      <div class="brand-row">
+        <div class="logo">TQR</div>
+        <div>
+          <p class="brand-name">トータル勤怠TQR</p>
+          <p class="brand-sub">QR / PASS 打刻管理</p>
+        </div>
+      </div>
+
+      <div class="intro-copy">
+        <h1>打刻から集計まで、まずは無料構成で検証。</h1>
+        <p>このログイン画面は静的HTMLのプロトタイプです。GitHub Pages、Cloudflare Pages、Vercelなどの無料枠で公開できます。</p>
+        <div class="intro-metrics">
+          <div class="metric">
+            <div class="metric-value">QR</div>
+            <div class="metric-label">基本の打刻方式</div>
+          </div>
+          <div class="metric">
+            <div class="metric-value">PASS</div>
+            <div class="metric-label">Webでも使える代替打刻</div>
+          </div>
+          <div class="metric">
+            <div class="metric-value">CSV</div>
+            <div class="metric-label">管理画面から出力</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="login-panel" aria-label="ログイン">
+      <div>
+        <h2 class="panel-title">ログイン</h2>
+        <p class="panel-sub">管理者は集計画面へ、端末は打刻画面へ進みます。</p>
+      </div>
+
+      <div class="tabs" role="tablist" aria-label="ログイン種別">
+        <button class="tab is-active" type="button" id="adminTab">管理者</button>
+        <button class="tab" type="button" id="terminalTab">打刻端末</button>
+      </div>
+
+      <form class="form" id="loginForm">
+        <div class="field">
+          <label for="companyId">会社ID</label>
+          <input id="companyId" autocomplete="organization" value="TOTAL-001">
+        </div>
+        <div class="field">
+          <label for="loginId" id="loginIdLabel">管理者ID</label>
+          <input id="loginId" autocomplete="username" value="admin">
+        </div>
+        <div class="field">
+          <label for="password">PASS</label>
+          <input id="password" type="password" autocomplete="current-password" value="0000">
+        </div>
+
+        <div class="error" id="loginError">会社ID・ID・PASSを確認してください。</div>
+        <button class="button" type="submit" id="loginButton">管理画面へログイン</button>
+      </form>
+
+      <div class="quick-links">
+        <button class="button secondary" type="button" id="demoAdminButton">管理画面を見る</button>
+        <button class="button secondary" type="button" id="demoTerminalButton">打刻端末を見る</button>
+      </div>
+
+      <div class="hint">
+        デモ認証情報<br>
+        管理者: TOTAL-001 / admin / 0000<br>
+        端末: TOTAL-001 / TQR-TAB-001 / 0000
+      </div>
+    </section>
+  </main>
+
+  <script>
+    const adminTab = document.getElementById("adminTab");
+    const terminalTab = document.getElementById("terminalTab");
+    const loginForm = document.getElementById("loginForm");
+    const companyId = document.getElementById("companyId");
+    const loginId = document.getElementById("loginId");
+    const loginIdLabel = document.getElementById("loginIdLabel");
+    const password = document.getElementById("password");
+    const loginButton = document.getElementById("loginButton");
+    const loginError = document.getElementById("loginError");
+    const demoAdminButton = document.getElementById("demoAdminButton");
+    const demoTerminalButton = document.getElementById("demoTerminalButton");
+
+    let mode = "admin";
+
+    function setMode(nextMode) {
+      mode = nextMode;
+      const isAdmin = mode === "admin";
+      adminTab.classList.toggle("is-active", isAdmin);
+      terminalTab.classList.toggle("is-active", !isAdmin);
+      loginIdLabel.textContent = isAdmin ? "管理者ID" : "端末ID";
+      loginId.value = isAdmin ? "admin" : "TQR-TAB-001";
+      loginButton.textContent = isAdmin ? "管理画面へログイン" : "打刻端末へログイン";
+      loginError.classList.remove("is-visible");
+    }
+
+    function saveSession(nextMode) {
+      localStorage.setItem("tqrSession", JSON.stringify({
+        companyId: companyId.value.trim(),
+        loginId: loginId.value.trim(),
+        mode: nextMode,
+        loggedInAt: new Date().toISOString()
+      }));
+    }
+
+    function login() {
+      const expectedId = mode === "admin" ? "admin" : "TQR-TAB-001";
+      const ok = companyId.value.trim() === "TOTAL-001" &&
+        loginId.value.trim() === expectedId &&
+        password.value.trim() === "0000";
+
+      if (!ok) {
+        loginError.classList.add("is-visible");
+        return;
+      }
+
+      saveSession(mode);
+      window.location.href = mode === "admin" ? "./admin.html" : "./index.html";
+    }
+
+    adminTab.addEventListener("click", () => setMode("admin"));
+    terminalTab.addEventListener("click", () => setMode("terminal"));
+    loginForm.addEventListener("submit", (event) => {
+      event.preventDefault();
+      login();
+    });
+    demoAdminButton.addEventListener("click", () => {
+      saveSession("admin");
+      window.location.href = "./admin.html";
+    });
+    demoTerminalButton.addEventListener("click", () => {
+      saveSession("terminal");
+      window.location.href = "./index.html";
+    });
+  </script>
+</body>
+</html>
