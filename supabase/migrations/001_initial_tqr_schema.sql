@@ -253,6 +253,22 @@ as $$
   );
 $$;
 
+create or replace function public.is_company_owner(target_company_id uuid)
+returns boolean
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  select exists (
+    select 1
+    from public.company_users
+    where auth_user_id = auth.uid()
+      and company_id = target_company_id
+      and role = 'owner'
+  );
+$$;
+
 alter table public.companies enable row level security;
 alter table public.company_users enable row level security;
 alter table public.sites enable row level security;
@@ -283,24 +299,8 @@ using (company_id in (select public.user_company_ids()));
 create policy "owners can manage memberships"
 on public.company_users for all
 to authenticated
-using (
-  exists (
-    select 1
-    from public.company_users cu
-    where cu.auth_user_id = auth.uid()
-      and cu.company_id = company_users.company_id
-      and cu.role = 'owner'
-  )
-)
-with check (
-  exists (
-    select 1
-    from public.company_users cu
-    where cu.auth_user_id = auth.uid()
-      and cu.company_id = company_users.company_id
-      and cu.role = 'owner'
-  )
-);
+using (public.is_company_owner(company_id))
+with check (public.is_company_owner(company_id));
 
 create policy "company users can view sites"
 on public.sites for select
