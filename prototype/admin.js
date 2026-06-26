@@ -116,32 +116,23 @@ function exportCsv() {
   URL.revokeObjectURL(url);
 }
 
-function buildRows(employees, punches) {
-  const punchGroups = new Map();
-  for (const punch of punches) {
-    const group = punchGroups.get(punch.employee_id) ?? [];
-    group.push(punch);
-    punchGroups.set(punch.employee_id, group);
-  }
-
-  return employees.map((employee) => {
-    const employeePunches = (punchGroups.get(employee.id) ?? []).sort(
-      (a, b) => new Date(a.punched_at) - new Date(b.punched_at)
-    );
-    const clockIn = employeePunches.find((punch) => punch.punch_type === "clock_in");
-    const clockOut = employeePunches.filter((punch) => punch.punch_type === "clock_out").at(-1);
-    const invalidPunch = employeePunches.find((punch) => punch.status !== "valid");
-    const status = invalidPunch ? "要確認" : clockIn ? (clockOut ? "正常" : "未退勤") : "未打刻";
+function buildRows(attendanceRows) {
+  return attendanceRows.map((attendanceRow) => {
+    const status = attendanceRow.has_invalid_punch
+      ? "要確認"
+      : attendanceRow.clock_in_at
+        ? (attendanceRow.clock_out_at ? "正常" : "未退勤")
+        : "未打刻";
     const statusType = status === "正常" ? "ok" : "warn";
 
     return {
-      employeeId: employee.employee_code,
-      name: employee.display_name,
-      clockIn: formatTime(clockIn?.punched_at),
-      clockOut: formatTime(clockOut?.punched_at),
+      employeeId: attendanceRow.employee_code,
+      name: attendanceRow.employee_name,
+      clockIn: formatTime(attendanceRow.clock_in_at),
+      clockOut: formatTime(attendanceRow.clock_out_at),
       breakTime: "-",
       workTime: "-",
-      auth: employeePunches.at(-1)?.auth_method?.toUpperCase() ?? "-",
+      auth: attendanceRow.latest_auth_method?.toUpperCase() ?? "-",
       status,
       statusType
     };
@@ -175,29 +166,16 @@ async function loadDashboard() {
 }
 
 async function loadAttendance() {
-  const { start, end } = startAndEndOfDay(dateInput.value);
-  const [employeesResponse, punchesResponse] = await Promise.all([
-    supabase
-      .from("employees")
-      .select("id, employee_code, display_name")
-      .eq("company_id", companyId)
-      .eq("is_active", true)
-      .order("employee_code"),
-    supabase
-      .from("punch_records")
-      .select("employee_id, punch_type, auth_method, status, punched_at")
-      .eq("company_id", companyId)
-      .gte("punched_at", start)
-      .lt("punched_at", end)
-      .order("punched_at")
-  ]);
+  const { data, error } = await supabase.rpc("current_attendance_rows", {
+    p_target_date: dateInput.value
+  });
 
-  if (employeesResponse.error || punchesResponse.error) {
-    alert("勤怠データを読み込めませんでした。ログインし直してください。");
+  if (error) {
+    alert(`勤怠データを読み込めませんでした。\n${error.message}`);
     return;
   }
 
-  rows = buildRows(employeesResponse.data, punchesResponse.data);
+  rows = buildRows(data ?? []);
   updateSummary();
   renderRows();
 }
