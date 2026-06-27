@@ -175,7 +175,7 @@
 
     .filters {
       display: grid;
-      grid-template-columns: repeat(4, minmax(150px, 1fr)) auto;
+      grid-template-columns: repeat(5, minmax(140px, 1fr)) auto;
       gap: 12px;
       align-items: end;
       padding: 16px;
@@ -296,6 +296,35 @@
       font-weight: 900;
     }
 
+    .sort-button {
+      min-height: 24px;
+      border: 0;
+      background: transparent;
+      color: inherit;
+      cursor: pointer;
+      padding: 0;
+      font: inherit;
+      font-weight: 900;
+    }
+
+    .sort-button::after {
+      content: "↕";
+      display: inline-block;
+      margin-left: 6px;
+      color: #8b9893;
+      font-size: 11px;
+    }
+
+    .sort-button.is-asc::after {
+      content: "↑";
+      color: var(--brand);
+    }
+
+    .sort-button.is-desc::after {
+      content: "↓";
+      color: var(--brand);
+    }
+
     tr:last-child td {
       border-bottom: 0;
     }
@@ -350,6 +379,67 @@
       font-size: 12px;
       line-height: 1.5;
       font-weight: 700;
+    }
+
+    .panel-stack {
+      display: grid;
+      gap: 18px;
+    }
+
+    .utility-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(180px, 1fr));
+      gap: 14px;
+    }
+
+    .utility-card {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #fff;
+      padding: 16px;
+      box-shadow: var(--shadow);
+    }
+
+    .utility-card strong {
+      display: block;
+      margin-bottom: 8px;
+      font-size: 16px;
+    }
+
+    .utility-card p {
+      margin: 0 0 12px;
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.6;
+      font-weight: 700;
+    }
+
+    .settings-list {
+      display: grid;
+      gap: 12px;
+      padding: 16px;
+    }
+
+    .settings-row {
+      display: grid;
+      grid-template-columns: 220px minmax(0, 1fr);
+      gap: 16px;
+      align-items: start;
+      padding: 14px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #fbfcfb;
+    }
+
+    .settings-label {
+      color: var(--muted);
+      font-size: 13px;
+      font-weight: 900;
+    }
+
+    .settings-value {
+      font-weight: 900;
+      line-height: 1.6;
     }
 
     .modal-backdrop {
@@ -516,16 +606,16 @@
               <table>
                 <thead>
                   <tr>
-                    <th>社員ID</th>
-                    <th>社員名</th>
-                    <th>所属</th>
-                    <th>出勤</th>
-                    <th>退勤</th>
-                    <th>休憩</th>
-                    <th>中抜け</th>
-                    <th>実働</th>
-                    <th>認証</th>
-                    <th>状態</th>
+                    <th><button class="sort-button" type="button" data-sort="employeeId">社員ID</button></th>
+                    <th><button class="sort-button" type="button" data-sort="name">社員名</button></th>
+                    <th><button class="sort-button" type="button" data-sort="department">所属</button></th>
+                    <th><button class="sort-button" type="button" data-sort="clockIn">出勤</button></th>
+                    <th><button class="sort-button" type="button" data-sort="clockOut">退勤</button></th>
+                    <th><button class="sort-button" type="button" data-sort="breakMinutes">休憩</button></th>
+                    <th><button class="sort-button" type="button" data-sort="leaveMinutes">中抜け</button></th>
+                    <th><button class="sort-button" type="button" data-sort="workMinutes">実働</button></th>
+                    <th><button class="sort-button" type="button" data-sort="auth">認証</button></th>
+                    <th><button class="sort-button" type="button" data-sort="status">状態</button></th>
                     <th>操作</th>
                   </tr>
                 </thead>

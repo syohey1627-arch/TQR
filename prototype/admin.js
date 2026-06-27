@@ -20,17 +20,24 @@ const warningCount = document.getElementById("warningCount");
 const unsyncedCount = document.getElementById("unsyncedCount");
 const pageTitle = document.querySelector(".page-title");
 const pageSub = document.querySelector(".page-sub");
+const content = document.querySelector(".content");
 const navButtons = Array.from(document.querySelectorAll(".nav button"));
 const attendanceSections = [
   document.getElementById("filterForm"),
   document.querySelector(".summary-grid"),
   document.querySelector(".grid-two")
 ];
+const gridTwo = document.querySelector(".grid-two");
+const sidePanel = document.querySelector(".grid-two > aside");
+const sideList = document.querySelector(".side-list");
 
 let rows = [];
 let employees = [];
 let companyId = null;
 let editingRow = null;
+let currentView = "attendance";
+let attendanceSort = { key: "employeeId", direction: "asc" };
+let employeeSort = { key: "employee_code", direction: "asc" };
 
 const employeePanel = document.createElement("section");
 employeePanel.className = "panel";
@@ -59,6 +66,95 @@ employeePanel.innerHTML = `
 document.querySelector(".content").append(employeePanel);
 const employeeBody = document.getElementById("employeeBody");
 const reloadEmployeesButton = document.getElementById("reloadEmployeesButton");
+
+const punchPanel = document.createElement("section");
+punchPanel.className = "panel";
+punchPanel.style.display = "none";
+punchPanel.innerHTML = `
+  <div class="panel-header">
+    <h2 class="panel-title">打刻一覧</h2>
+    <button class="button" type="button" id="reloadPunchesButton">再読み込み</button>
+  </div>
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>社員ID</th>
+          <th>社員名</th>
+          <th>所属</th>
+          <th>出勤</th>
+          <th>退勤</th>
+          <th>休憩</th>
+          <th>中抜け</th>
+          <th>実働</th>
+          <th>認証</th>
+          <th>状態</th>
+        </tr>
+      </thead>
+      <tbody id="punchBody"></tbody>
+    </table>
+  </div>
+`;
+content.append(punchPanel);
+const punchBody = document.getElementById("punchBody");
+const reloadPunchesButton = document.getElementById("reloadPunchesButton");
+
+const csvPanel = document.createElement("section");
+csvPanel.className = "panel-stack";
+csvPanel.style.display = "none";
+csvPanel.innerHTML = `
+  <section class="utility-grid">
+    <div class="utility-card">
+      <strong>表示中のCSV</strong>
+      <p>日次集計のフィルター結果をCSV出力します。所属・従業員・状態の絞り込みも反映します。</p>
+      <button class="button primary" type="button" id="exportFilteredCsvButton">CSV出力</button>
+    </div>
+    <div class="utility-card">
+      <strong>所属別CSV</strong>
+      <p>所属フィルターで本社営業部、A支店、B支店を選ぶと、その所属だけのCSVを出力できます。</p>
+      <button class="button" type="button" id="openAttendanceFromCsvButton">日次集計で絞り込む</button>
+    </div>
+    <div class="utility-card">
+      <strong>従業員CSV取込</strong>
+      <p>MVP後半で、社員ID・社員名・所属・PASS打刻可否をCSVから一括登録/更新できるようにします。</p>
+      <button class="button" type="button" id="employeeImportNoticeButton">仕様を確認</button>
+    </div>
+  </section>
+`;
+content.append(csvPanel);
+const exportFilteredCsvButton = document.getElementById("exportFilteredCsvButton");
+const openAttendanceFromCsvButton = document.getElementById("openAttendanceFromCsvButton");
+const employeeImportNoticeButton = document.getElementById("employeeImportNoticeButton");
+
+const settingsPanel = document.createElement("section");
+settingsPanel.className = "panel";
+settingsPanel.style.display = "none";
+settingsPanel.innerHTML = `
+  <div class="panel-header">
+    <h2 class="panel-title">設定</h2>
+  </div>
+  <div class="settings-list">
+    <div class="settings-row">
+      <div class="settings-label">会社ID</div>
+      <div class="settings-value" id="settingsCompanyCode">-</div>
+    </div>
+    <div class="settings-row">
+      <div class="settings-label">所属</div>
+      <div class="settings-value" id="settingsDepartments">-</div>
+    </div>
+    <div class="settings-row">
+      <div class="settings-label">PASS打刻</div>
+      <div class="settings-value">有効。端末側はEdge Function経由で保存します。</div>
+    </div>
+    <div class="settings-row">
+      <div class="settings-label">今後追加する設定</div>
+      <div class="settings-value">定刻、早出判定、二重打刻ポリシー、CSV取込設定</div>
+    </div>
+  </div>
+`;
+content.append(settingsPanel);
+const settingsCompanyCode = document.getElementById("settingsCompanyCode");
+const settingsDepartments = document.getElementById("settingsDepartments");
 
 function escapeHtml(value) {
   return String(value ?? "").replace(/[&<>'"]/g, (character) => ({
@@ -91,20 +187,54 @@ function formatMinutes(minutes, { zeroAsDash = false, compact = false } = {}) {
     : `${String(hours).padStart(2, "0")}:${String(rest).padStart(2, "0")}`;
 }
 
+function getComparableValue(row, key) {
+  if (["breakMinutes", "leaveMinutes", "workMinutes"].includes(key)) {
+    return row[key] ?? -1;
+  }
+
+  if (["clockIn", "clockOut"].includes(key)) {
+    return row[key] === "-" ? "99:99" : row[key];
+  }
+
+  return String(row[key] ?? "");
+}
+
+function sortRowsForView(rowList) {
+  const { key, direction } = attendanceSort;
+  const multiplier = direction === "asc" ? 1 : -1;
+  return [...rowList].sort((a, b) => {
+    const left = getComparableValue(a, key);
+    const right = getComparableValue(b, key);
+    if (typeof left === "number" && typeof right === "number") {
+      return (left - right) * multiplier;
+    }
+    return String(left).localeCompare(String(right), "ja", { numeric: true }) * multiplier;
+  });
+}
+
 function getFilteredRows() {
   const query = employeeSearch.value.trim().toLowerCase();
   const department = departmentSelect.value;
   const status = statusSelect.value;
-  return rows.filter((row) => {
+  const filteredRows = rows.filter((row) => {
     const matchesQuery = !query || `${row.employeeId} ${row.name} ${row.department}`.toLowerCase().includes(query);
     const matchesDepartment = department === "すべて" || row.department === department;
     const matchesStatus = status === "すべて" || row.status === status;
     return matchesQuery && matchesDepartment && matchesStatus;
   });
+  return sortRowsForView(filteredRows);
+}
+
+function updateSortButtons() {
+  document.querySelectorAll("[data-sort]").forEach((button) => {
+    button.classList.toggle("is-asc", button.dataset.sort === attendanceSort.key && attendanceSort.direction === "asc");
+    button.classList.toggle("is-desc", button.dataset.sort === attendanceSort.key && attendanceSort.direction === "desc");
+  });
 }
 
 function renderRows() {
   const filteredRows = getFilteredRows();
+  updateSortButtons();
 
   attendanceBody.innerHTML = filteredRows.length
     ? filteredRows.map((row) => `
@@ -125,11 +255,29 @@ function renderRows() {
     : '<tr><td colspan="11">対象の勤怠データはありません。</td></tr>';
 }
 
+function renderPunchRows() {
+  const filteredRows = getFilteredRows();
+  punchBody.innerHTML = filteredRows.length
+    ? filteredRows.map((row) => `
+      <tr>
+        <td>${escapeHtml(row.employeeId)}</td>
+        <td>${escapeHtml(row.name)}</td>
+        <td>${escapeHtml(row.department)}</td>
+        <td>${escapeHtml(row.clockIn)}</td>
+        <td>${escapeHtml(row.clockOut)}</td>
+        <td>${escapeHtml(row.breakTime)}</td>
+        <td>${escapeHtml(row.leaveTime)}</td>
+        <td>${escapeHtml(row.workTime)}</td>
+        <td>${escapeHtml(row.auth)}</td>
+        <td><span class="status ${row.statusType}">${escapeHtml(row.status)}</span></td>
+      </tr>
+    `).join("")
+    : '<tr><td colspan="10">対象の打刻データはありません。</td></tr>';
+}
+
 function updateDepartmentOptions() {
   const currentValue = departmentSelect.value || "すべて";
-  const departments = Array.from(
-    new Set(rows.map((row) => row.department).filter(Boolean))
-  ).sort((a, b) => a.localeCompare(b, "ja"));
+  const departments = getDepartments();
 
   departmentSelect.innerHTML = [
     '<option>すべて</option>',
@@ -147,6 +295,17 @@ function updateSummary() {
   unsyncedCount.textContent = "0";
 }
 
+function getDepartments() {
+  return Array.from(
+    new Set(rows.map((row) => row.department).filter(Boolean))
+  ).sort((a, b) => a.localeCompare(b, "ja"));
+}
+
+function updateSettingsPanel() {
+  settingsCompanyCode.textContent = document.querySelector(".company-id").textContent || "-";
+  settingsDepartments.textContent = getDepartments().join(" / ") || "-";
+}
+
 function formatDateTime(timestamp) {
   if (!timestamp) return "-";
   return new Intl.DateTimeFormat("ja-JP", {
@@ -161,8 +320,15 @@ function formatDateTime(timestamp) {
 }
 
 function renderEmployees() {
-  employeeBody.innerHTML = employees.length
-    ? employees.map((employee) => `
+  const sortedEmployees = [...employees].sort((a, b) => {
+    const left = String(a[employeeSort.key] ?? "");
+    const right = String(b[employeeSort.key] ?? "");
+    const multiplier = employeeSort.direction === "asc" ? 1 : -1;
+    return left.localeCompare(right, "ja", { numeric: true }) * multiplier;
+  });
+
+  employeeBody.innerHTML = sortedEmployees.length
+    ? sortedEmployees.map((employee) => `
       <tr>
         <td>${escapeHtml(employee.employee_code)}</td>
         <td>${escapeHtml(employee.employee_name)}</td>
@@ -176,24 +342,92 @@ function renderEmployees() {
 }
 
 function setView(view) {
+  currentView = view;
   const isEmployees = view === "employees";
+  const isAttendance = view === "attendance";
+  const isPunches = view === "punches";
+  const isDevices = view === "devices";
+  const isCsv = view === "csv";
+  const isSettings = view === "settings";
+
   attendanceSections.forEach((section) => {
-    if (section) section.style.display = isEmployees ? "none" : "";
+    if (section) section.style.display = isAttendance ? "" : "none";
   });
   employeePanel.style.display = isEmployees ? "" : "none";
+  punchPanel.style.display = isPunches ? "" : "none";
+  csvPanel.style.display = isCsv ? "" : "none";
+  settingsPanel.style.display = isSettings ? "" : "none";
+  sidePanel.style.display = (isAttendance || isDevices) ? "" : "none";
+  if (gridTwo && sidePanel.parentElement !== gridTwo) gridTwo.append(sidePanel);
+  if (gridTwo) {
+    gridTwo.style.display = (isAttendance || isDevices) ? "" : "none";
+    if (gridTwo.firstElementChild) gridTwo.firstElementChild.style.display = isDevices ? "none" : "";
+  }
+
   navButtons.forEach((button) => button.classList.remove("is-active"));
 
+  const viewIndex = {
+    attendance: 0,
+    punches: 1,
+    employees: 2,
+    devices: 3,
+    csv: 4,
+    settings: 5
+  }[view] ?? 0;
+  navButtons[viewIndex]?.classList.add("is-active");
+
   if (isEmployees) {
-    navButtons[2]?.classList.add("is-active");
     pageTitle.textContent = "従業員";
-    pageSub.textContent = "登録済みの従業員ID、PASS打刻可否、利用状態を確認します。";
+    pageSub.textContent = "登録済みの従業員ID、所属、PASS打刻可否、利用状態を確認します。";
     void loadEmployees();
     return;
   }
 
-  navButtons[0]?.classList.add("is-active");
+  if (isPunches) {
+    pageTitle.textContent = "打刻一覧";
+    pageSub.textContent = "日次集計と同じ対象日の打刻状況を一覧で確認します。";
+    renderPunchRows();
+    return;
+  }
+
+  if (isDevices) {
+    pageTitle.textContent = "端末";
+    pageSub.textContent = "打刻端末、未同期、QR発行待ち、PASS打刻許可の状態を確認します。";
+    attendanceSections.forEach((section) => {
+      if (section) section.style.display = "none";
+    });
+    punchPanel.style.display = "none";
+    employeePanel.style.display = "none";
+    csvPanel.style.display = "none";
+    settingsPanel.style.display = "none";
+    if (gridTwo) {
+      gridTwo.style.display = "";
+      if (gridTwo.firstElementChild) gridTwo.firstElementChild.style.display = "none";
+    }
+    return;
+  }
+
+  if (isCsv) {
+    pageTitle.textContent = "CSV出力";
+    pageSub.textContent = "表示中の日次集計データをCSVで出力します。";
+    return;
+  }
+
+  if (isSettings) {
+    pageTitle.textContent = "設定";
+    pageSub.textContent = "MVPで必要な会社設定と今後追加する設定を確認します。";
+    updateSettingsPanel();
+    return;
+  }
+
+  if (gridTwo) {
+    gridTwo.style.display = "";
+    if (gridTwo.firstElementChild) gridTwo.firstElementChild.style.display = "";
+  }
   pageTitle.textContent = "日次集計";
   pageSub.textContent = "打刻端末から同期された勤怠を確認・修正・CSV出力します。";
+  renderRows();
+  updateSummary();
 }
 
 function openEditModal(employeeId) {
@@ -306,6 +540,8 @@ async function loadAttendance() {
   updateDepartmentOptions();
   updateSummary();
   renderRows();
+  renderPunchRows();
+  updateSettingsPanel();
 }
 
 async function loadEmployees() {
@@ -372,6 +608,11 @@ editModal.addEventListener("click", (event) => {
   if (event.target === editModal) closeEditModal();
 });
 exportCsvButton.addEventListener("click", exportCsv);
+exportFilteredCsvButton.addEventListener("click", exportCsv);
+openAttendanceFromCsvButton.addEventListener("click", () => setView("attendance"));
+employeeImportNoticeButton.addEventListener("click", () => {
+  alert("CSV取込はMVP後半で実装します。社員ID、社員名、所属、PASS打刻可否を読み込む予定です。");
+});
 openTerminalButton.addEventListener("click", () => {
   window.location.href = "./index.html";
 });
@@ -387,24 +628,38 @@ filterForm.addEventListener("submit", async (event) => {
 departmentSelect.addEventListener("change", () => {
   updateSummary();
   renderRows();
+  renderPunchRows();
 });
 employeeSearch.addEventListener("input", () => {
   updateSummary();
   renderRows();
+  renderPunchRows();
 });
 statusSelect.addEventListener("change", () => {
   updateSummary();
   renderRows();
+  renderPunchRows();
 });
 reloadEmployeesButton.addEventListener("click", loadEmployees);
-navButtons[0]?.addEventListener("click", () => setView("attendance"));
-navButtons[1]?.addEventListener("click", () => setView("attendance"));
-navButtons[2]?.addEventListener("click", () => setView("employees"));
-navButtons.slice(3).forEach((button) => {
+reloadPunchesButton.addEventListener("click", loadAttendance);
+document.querySelectorAll("[data-sort]").forEach((button) => {
   button.addEventListener("click", () => {
-    alert("このメニューは次の開発ステップで実装します。");
+    const key = button.dataset.sort;
+    attendanceSort = {
+      key,
+      direction: attendanceSort.key === key && attendanceSort.direction === "asc" ? "desc" : "asc"
+    };
+    updateSummary();
+    renderRows();
+    renderPunchRows();
   });
 });
+navButtons[0]?.addEventListener("click", () => setView("attendance"));
+navButtons[1]?.addEventListener("click", () => setView("punches"));
+navButtons[2]?.addEventListener("click", () => setView("employees"));
+navButtons[3]?.addEventListener("click", () => setView("devices"));
+navButtons[4]?.addEventListener("click", () => setView("csv"));
+navButtons[5]?.addEventListener("click", () => setView("settings"));
 
 dateInput.value = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Tokyo" }).format(new Date());
 await loadDashboard();
