@@ -17,9 +17,45 @@ const presentCount = document.getElementById("presentCount");
 const openCount = document.getElementById("openCount");
 const warningCount = document.getElementById("warningCount");
 const unsyncedCount = document.getElementById("unsyncedCount");
+const pageTitle = document.querySelector(".page-title");
+const pageSub = document.querySelector(".page-sub");
+const navButtons = Array.from(document.querySelectorAll(".nav button"));
+const attendanceSections = [
+  document.getElementById("filterForm"),
+  document.querySelector(".summary-grid"),
+  document.querySelector(".grid-two")
+];
 
 let rows = [];
+let employees = [];
 let companyId = null;
+
+const employeePanel = document.createElement("section");
+employeePanel.className = "panel";
+employeePanel.style.display = "none";
+employeePanel.innerHTML = `
+  <div class="panel-header">
+    <h2 class="panel-title">従業員一覧</h2>
+    <button class="button" type="button" id="reloadEmployeesButton">再読み込み</button>
+  </div>
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>社員ID</th>
+          <th>社員名</th>
+          <th>PASS打刻</th>
+          <th>状態</th>
+          <th>登録日</th>
+        </tr>
+      </thead>
+      <tbody id="employeeBody"></tbody>
+    </table>
+  </div>
+`;
+document.querySelector(".content").append(employeePanel);
+const employeeBody = document.getElementById("employeeBody");
+const reloadEmployeesButton = document.getElementById("reloadEmployeesButton");
 
 function escapeHtml(value) {
   return String(value ?? "").replace(/[&<>'"]/g, (character) => ({
@@ -83,6 +119,54 @@ function updateSummary() {
   openCount.textContent = rows.filter((row) => row.clockIn !== "-" && row.clockOut === "-").length;
   warningCount.textContent = rows.filter((row) => row.statusType !== "ok").length;
   unsyncedCount.textContent = "0";
+}
+
+function formatDateTime(timestamp) {
+  if (!timestamp) return "-";
+  return new Intl.DateTimeFormat("ja-JP", {
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+    timeZone: "Asia/Tokyo"
+  }).format(new Date(timestamp));
+}
+
+function renderEmployees() {
+  employeeBody.innerHTML = employees.length
+    ? employees.map((employee) => `
+      <tr>
+        <td>${escapeHtml(employee.employee_code)}</td>
+        <td>${escapeHtml(employee.employee_name)}</td>
+        <td>${employee.pass_punch_enabled ? "有効" : "無効"}</td>
+        <td><span class="status ${employee.is_active ? "ok" : "warn"}">${employee.is_active ? "有効" : "停止"}</span></td>
+        <td>${escapeHtml(formatDateTime(employee.created_at))}</td>
+      </tr>
+    `).join("")
+    : '<tr><td colspan="5">従業員が登録されていません。</td></tr>';
+}
+
+function setView(view) {
+  const isEmployees = view === "employees";
+  attendanceSections.forEach((section) => {
+    if (section) section.style.display = isEmployees ? "none" : "";
+  });
+  employeePanel.style.display = isEmployees ? "" : "none";
+  navButtons.forEach((button) => button.classList.remove("is-active"));
+
+  if (isEmployees) {
+    navButtons[2]?.classList.add("is-active");
+    pageTitle.textContent = "従業員";
+    pageSub.textContent = "登録済みの従業員ID、PASS打刻可否、利用状態を確認します。";
+    void loadEmployees();
+    return;
+  }
+
+  navButtons[0]?.classList.add("is-active");
+  pageTitle.textContent = "日次集計";
+  pageSub.textContent = "打刻端末から同期された勤怠を確認・修正・CSV出力します。";
 }
 
 function openEditModal(index) {
@@ -185,6 +269,18 @@ async function loadAttendance() {
   renderRows();
 }
 
+async function loadEmployees() {
+  const { data, error } = await supabase.rpc("current_employees");
+
+  if (error) {
+    alert(`従業員データを読み込めませんでした。\n${error.message}`);
+    return;
+  }
+
+  employees = data ?? [];
+  renderEmployees();
+}
+
 attendanceBody.addEventListener("click", (event) => {
   const button = event.target.closest("[data-edit]");
   if (button) openEditModal(Number(button.dataset.edit));
@@ -208,6 +304,15 @@ logoutButton.addEventListener("click", async () => {
 filterForm.addEventListener("submit", async (event) => {
   event.preventDefault();
   await loadAttendance();
+});
+reloadEmployeesButton.addEventListener("click", loadEmployees);
+navButtons[0]?.addEventListener("click", () => setView("attendance"));
+navButtons[1]?.addEventListener("click", () => setView("attendance"));
+navButtons[2]?.addEventListener("click", () => setView("employees"));
+navButtons.slice(3).forEach((button) => {
+  button.addEventListener("click", () => {
+    alert("このメニューは次の開発ステップで実装します。");
+  });
 });
 
 dateInput.value = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Tokyo" }).format(new Date());
