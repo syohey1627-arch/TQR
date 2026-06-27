@@ -461,6 +461,12 @@
             </select>
           </div>
           <div class="field">
+            <label for="departmentSelect">所属</label>
+            <select id="departmentSelect">
+              <option>すべて</option>
+            </select>
+          </div>
+          <div class="field">
             <label for="employeeSearch">従業員</label>
             <input id="employeeSearch" placeholder="社員名・ID">
           </div>
@@ -470,7 +476,8 @@
               <option>すべて</option>
               <option>正常</option>
               <option>要確認</option>
-              <option>未同期</option>
+              <option>未退勤</option>
+              <option>未打刻</option>
             </select>
           </div>
           <button class="button primary" type="submit">表示</button>
@@ -511,6 +518,7 @@
                   <tr>
                     <th>社員ID</th>
                     <th>社員名</th>
+                    <th>所属</th>
                     <th>出勤</th>
                     <th>退勤</th>
                     <th>休憩</th>

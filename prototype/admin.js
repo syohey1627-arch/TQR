@@ -11,6 +11,7 @@ const openTerminalButton = document.getElementById("openTerminalButton");
 const logoutButton = document.getElementById("logoutButton");
 const filterForm = document.getElementById("filterForm");
 const dateInput = document.getElementById("dateInput");
+const departmentSelect = document.getElementById("departmentSelect");
 const employeeSearch = document.getElementById("employeeSearch");
 const statusSelect = document.getElementById("statusSelect");
 const presentCount = document.getElementById("presentCount");
@@ -45,6 +46,7 @@ employeePanel.innerHTML = `
         <tr>
           <th>社員ID</th>
           <th>社員名</th>
+          <th>所属</th>
           <th>PASS打刻</th>
           <th>状態</th>
           <th>登録日</th>
@@ -89,20 +91,27 @@ function formatMinutes(minutes, { zeroAsDash = false, compact = false } = {}) {
     : `${String(hours).padStart(2, "0")}:${String(rest).padStart(2, "0")}`;
 }
 
-function renderRows() {
+function getFilteredRows() {
   const query = employeeSearch.value.trim().toLowerCase();
+  const department = departmentSelect.value;
   const status = statusSelect.value;
-  const filteredRows = rows.filter((row) => {
-    const matchesQuery = !query || `${row.employeeId} ${row.name}`.toLowerCase().includes(query);
+  return rows.filter((row) => {
+    const matchesQuery = !query || `${row.employeeId} ${row.name} ${row.department}`.toLowerCase().includes(query);
+    const matchesDepartment = department === "すべて" || row.department === department;
     const matchesStatus = status === "すべて" || row.status === status;
-    return matchesQuery && matchesStatus;
+    return matchesQuery && matchesDepartment && matchesStatus;
   });
+}
+
+function renderRows() {
+  const filteredRows = getFilteredRows();
 
   attendanceBody.innerHTML = filteredRows.length
-    ? filteredRows.map((row, index) => `
+    ? filteredRows.map((row) => `
       <tr>
         <td>${escapeHtml(row.employeeId)}</td>
         <td>${escapeHtml(row.name)}</td>
+        <td>${escapeHtml(row.department)}</td>
         <td>${escapeHtml(row.clockIn)}</td>
         <td>${escapeHtml(row.clockOut)}</td>
         <td>${escapeHtml(row.breakTime)}</td>
@@ -110,16 +119,31 @@ function renderRows() {
         <td>${escapeHtml(row.workTime)}</td>
         <td>${escapeHtml(row.auth)}</td>
         <td><span class="status ${row.statusType}">${escapeHtml(row.status)}</span></td>
-        <td><button class="button" type="button" data-edit="${index}">修正</button></td>
+        <td><button class="button" type="button" data-edit="${escapeHtml(row.employeeId)}">修正</button></td>
       </tr>
     `).join("")
-    : '<tr><td colspan="10">対象の勤怠データはありません。</td></tr>';
+    : '<tr><td colspan="11">対象の勤怠データはありません。</td></tr>';
+}
+
+function updateDepartmentOptions() {
+  const currentValue = departmentSelect.value || "すべて";
+  const departments = Array.from(
+    new Set(rows.map((row) => row.department).filter(Boolean))
+  ).sort((a, b) => a.localeCompare(b, "ja"));
+
+  departmentSelect.innerHTML = [
+    '<option>すべて</option>',
+    ...departments.map((department) => `<option>${escapeHtml(department)}</option>`)
+  ].join("");
+
+  departmentSelect.value = departments.includes(currentValue) ? currentValue : "すべて";
 }
 
 function updateSummary() {
-  presentCount.textContent = rows.filter((row) => row.clockIn !== "-").length;
-  openCount.textContent = rows.filter((row) => row.clockIn !== "-" && row.clockOut === "-").length;
-  warningCount.textContent = rows.filter((row) => row.statusType !== "ok").length;
+  const filteredRows = getFilteredRows();
+  presentCount.textContent = filteredRows.filter((row) => row.clockIn !== "-").length;
+  openCount.textContent = filteredRows.filter((row) => row.clockIn !== "-" && row.clockOut === "-").length;
+  warningCount.textContent = filteredRows.filter((row) => row.statusType !== "ok").length;
   unsyncedCount.textContent = "0";
 }
 
@@ -142,12 +166,13 @@ function renderEmployees() {
       <tr>
         <td>${escapeHtml(employee.employee_code)}</td>
         <td>${escapeHtml(employee.employee_name)}</td>
+        <td>${escapeHtml(employee.department_name ?? "未設定")}</td>
         <td>${employee.pass_punch_enabled ? "有効" : "無効"}</td>
         <td><span class="status ${employee.is_active ? "ok" : "warn"}">${employee.is_active ? "有効" : "停止"}</span></td>
         <td>${escapeHtml(formatDateTime(employee.created_at))}</td>
       </tr>
     `).join("")
-    : '<tr><td colspan="5">従業員が登録されていません。</td></tr>';
+    : '<tr><td colspan="6">従業員が登録されていません。</td></tr>';
 }
 
 function setView(view) {
@@ -171,8 +196,10 @@ function setView(view) {
   pageSub.textContent = "打刻端末から同期された勤怠を確認・修正・CSV出力します。";
 }
 
-function openEditModal(index) {
-  const row = rows[index] || rows[0];
+function openEditModal(employeeId) {
+  const row = employeeId
+    ? rows.find((candidate) => candidate.employeeId === employeeId)
+    : rows[0];
   if (!row) return;
   editingRow = row;
   document.getElementById("editEmployee").value = row.name;
@@ -188,10 +215,12 @@ function closeEditModal() {
 }
 
 function exportCsv() {
-  const header = ["社員ID", "社員名", "出勤", "退勤", "休憩", "中抜け", "実働", "認証", "状態"];
-  const csv = [header, ...rows.map((row) => [
+  const exportRows = getFilteredRows();
+  const header = ["社員ID", "社員名", "所属", "出勤", "退勤", "休憩", "中抜け", "実働", "認証", "状態"];
+  const csv = [header, ...exportRows.map((row) => [
     row.employeeId,
     row.name,
+    row.department,
     row.clockIn,
     row.clockOut,
     formatMinutes(row.breakMinutes, { compact: true }),
@@ -222,6 +251,7 @@ function buildRows(attendanceRows) {
     return {
       employeeId: attendanceRow.employee_code,
       name: attendanceRow.employee_name,
+      department: attendanceRow.department_name ?? "未設定",
       clockIn: formatTime(attendanceRow.clock_in_at),
       clockOut: formatTime(attendanceRow.clock_out_at),
       breakMinutes: attendanceRow.break_minutes,
@@ -273,6 +303,7 @@ async function loadAttendance() {
   }
 
   rows = buildRows(data ?? []);
+  updateDepartmentOptions();
   updateSummary();
   renderRows();
 }
@@ -331,9 +362,9 @@ async function saveManualCorrection() {
 
 attendanceBody.addEventListener("click", (event) => {
   const button = event.target.closest("[data-edit]");
-  if (button) openEditModal(Number(button.dataset.edit));
+  if (button) openEditModal(button.dataset.edit);
 });
-addCorrectionButton.addEventListener("click", () => openEditModal(0));
+addCorrectionButton.addEventListener("click", () => openEditModal());
 closeModalButton.addEventListener("click", closeEditModal);
 cancelEditButton.addEventListener("click", closeEditModal);
 saveEditButton.addEventListener("click", saveManualCorrection);
@@ -352,6 +383,18 @@ logoutButton.addEventListener("click", async () => {
 filterForm.addEventListener("submit", async (event) => {
   event.preventDefault();
   await loadAttendance();
+});
+departmentSelect.addEventListener("change", () => {
+  updateSummary();
+  renderRows();
+});
+employeeSearch.addEventListener("input", () => {
+  updateSummary();
+  renderRows();
+});
+statusSelect.addEventListener("change", () => {
+  updateSummary();
+  renderRows();
 });
 reloadEmployeesButton.addEventListener("click", loadEmployees);
 navButtons[0]?.addEventListener("click", () => setView("attendance"));
