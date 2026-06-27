@@ -41,11 +41,12 @@ function formatTime(timestamp) {
   }).format(new Date(timestamp));
 }
 
-function startAndEndOfDay(value) {
-  const start = new Date(`${value}T00:00:00+09:00`);
-  const end = new Date(start);
-  end.setDate(end.getDate() + 1);
-  return { start: start.toISOString(), end: end.toISOString() };
+function formatMinutes(minutes) {
+  if (minutes === null || minutes === undefined) return "-";
+  const safeMinutes = Math.max(0, Number(minutes));
+  const hours = Math.floor(safeMinutes / 60);
+  const rest = safeMinutes % 60;
+  return `${String(hours).padStart(2, "0")}:${String(rest).padStart(2, "0")}`;
 }
 
 function renderRows() {
@@ -130,8 +131,8 @@ function buildRows(attendanceRows) {
       name: attendanceRow.employee_name,
       clockIn: formatTime(attendanceRow.clock_in_at),
       clockOut: formatTime(attendanceRow.clock_out_at),
-      breakTime: "-",
-      workTime: "-",
+      breakTime: formatMinutes(attendanceRow.break_minutes),
+      workTime: formatMinutes(attendanceRow.work_minutes),
       auth: attendanceRow.latest_auth_method?.toUpperCase() ?? "-",
       status,
       statusType
