@@ -12,6 +12,7 @@ const logoutButton = document.getElementById("logoutButton");
 const filterForm = document.getElementById("filterForm");
 const dateInput = document.getElementById("dateInput");
 const departmentSelect = document.getElementById("departmentSelect");
+const employeeSelect = document.getElementById("employeeSelect");
 const employeeSearch = document.getElementById("employeeSearch");
 const statusSelect = document.getElementById("statusSelect");
 const presentCount = document.getElementById("presentCount");
@@ -215,12 +216,14 @@ function sortRowsForView(rowList) {
 function getFilteredRows() {
   const query = employeeSearch.value.trim().toLowerCase();
   const department = departmentSelect.value;
+  const selectedEmployeeId = employeeSelect.value;
   const status = statusSelect.value;
   const filteredRows = rows.filter((row) => {
     const matchesQuery = !query || `${row.employeeId} ${row.name} ${row.department}`.toLowerCase().includes(query);
     const matchesDepartment = department === "すべて" || row.department === department;
+    const matchesEmployee = !selectedEmployeeId || row.employeeId === selectedEmployeeId;
     const matchesStatus = status === "すべて" || row.status === status;
-    return matchesQuery && matchesDepartment && matchesStatus;
+    return matchesQuery && matchesDepartment && matchesEmployee && matchesStatus;
   });
   return sortRowsForView(filteredRows);
 }
@@ -285,6 +288,22 @@ function updateDepartmentOptions() {
   ].join("");
 
   departmentSelect.value = departments.includes(currentValue) ? currentValue : "すべて";
+}
+
+function updateEmployeeOptions() {
+  const currentValue = employeeSelect.value || "";
+  const selectableRows = rows
+    .filter((row) => departmentSelect.value === "すべて" || row.department === departmentSelect.value)
+    .sort((a, b) => a.employeeId.localeCompare(b.employeeId, "ja", { numeric: true }));
+
+  employeeSelect.innerHTML = [
+    '<option value="">すべて</option>',
+    ...selectableRows.map((row) => (
+      `<option value="${escapeHtml(row.employeeId)}">${escapeHtml(row.employeeId)} / ${escapeHtml(row.name)}</option>`
+    ))
+  ].join("");
+
+  employeeSelect.value = selectableRows.some((row) => row.employeeId === currentValue) ? currentValue : "";
 }
 
 function updateSummary() {
@@ -538,6 +557,7 @@ async function loadAttendance() {
 
   rows = buildRows(data ?? []);
   updateDepartmentOptions();
+  updateEmployeeOptions();
   updateSummary();
   renderRows();
   renderPunchRows();
@@ -626,6 +646,12 @@ filterForm.addEventListener("submit", async (event) => {
   await loadAttendance();
 });
 departmentSelect.addEventListener("change", () => {
+  updateEmployeeOptions();
+  updateSummary();
+  renderRows();
+  renderPunchRows();
+});
+employeeSelect.addEventListener("change", () => {
   updateSummary();
   renderRows();
   renderPunchRows();
