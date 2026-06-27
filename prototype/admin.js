@@ -41,12 +41,15 @@ function formatTime(timestamp) {
   }).format(new Date(timestamp));
 }
 
-function formatMinutes(minutes) {
+function formatMinutes(minutes, { zeroAsDash = false, compact = false } = {}) {
   if (minutes === null || minutes === undefined) return "-";
   const safeMinutes = Math.max(0, Number(minutes));
+  if (zeroAsDash && safeMinutes === 0) return "-";
   const hours = Math.floor(safeMinutes / 60);
   const rest = safeMinutes % 60;
-  return `${String(hours).padStart(2, "0")}:${String(rest).padStart(2, "0")}`;
+  return compact
+    ? `${hours}:${String(rest).padStart(2, "0")}`
+    : `${String(hours).padStart(2, "0")}:${String(rest).padStart(2, "0")}`;
 }
 
 function renderRows() {
@@ -102,7 +105,7 @@ function exportCsv() {
     row.name,
     row.clockIn,
     row.clockOut,
-    row.breakTime,
+    formatMinutes(row.breakMinutes, { compact: true }),
     row.workTime,
     row.auth,
     row.status
@@ -131,7 +134,8 @@ function buildRows(attendanceRows) {
       name: attendanceRow.employee_name,
       clockIn: formatTime(attendanceRow.clock_in_at),
       clockOut: formatTime(attendanceRow.clock_out_at),
-      breakTime: formatMinutes(attendanceRow.break_minutes),
+      breakMinutes: attendanceRow.break_minutes,
+      breakTime: formatMinutes(attendanceRow.break_minutes, { zeroAsDash: true }),
       workTime: formatMinutes(attendanceRow.work_minutes),
       auth: attendanceRow.latest_auth_method?.toUpperCase() ?? "-",
       status,
