@@ -1,5 +1,7 @@
 -- Add break/work totals to the current attendance summary RPC.
 
+drop function if exists public.current_attendance_rows(date);
+
 create or replace function public.current_attendance_rows(p_target_date date)
 returns table (
   employee_id uuid,
