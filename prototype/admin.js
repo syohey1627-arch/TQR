@@ -29,6 +29,7 @@ const attendanceSections = [
 let rows = [];
 let employees = [];
 let companyId = null;
+let editingRow = null;
 
 const employeePanel = document.createElement("section");
 employeePanel.className = "panel";
@@ -173,14 +174,17 @@ function setView(view) {
 function openEditModal(index) {
   const row = rows[index] || rows[0];
   if (!row) return;
+  editingRow = row;
   document.getElementById("editEmployee").value = row.name;
   document.getElementById("editClockIn").value = row.clockIn === "-" ? "" : row.clockIn;
   document.getElementById("editClockOut").value = row.clockOut === "-" ? "" : row.clockOut;
+  document.getElementById("editReason").value = "";
   editModal.classList.add("is-open");
 }
 
 function closeEditModal() {
   editModal.classList.remove("is-open");
+  editingRow = null;
 }
 
 function exportCsv() {
@@ -285,6 +289,46 @@ async function loadEmployees() {
   renderEmployees();
 }
 
+async function saveManualCorrection() {
+  if (!editingRow) return;
+
+  const clockIn = document.getElementById("editClockIn").value || null;
+  const clockOut = document.getElementById("editClockOut").value || null;
+  const reason = document.getElementById("editReason").value.trim();
+
+  if (!reason) {
+    alert("修正理由を入力してください。");
+    return;
+  }
+
+  if (!clockIn && !clockOut) {
+    alert("出勤または退勤のどちらかを入力してください。");
+    return;
+  }
+
+  saveEditButton.disabled = true;
+  saveEditButton.textContent = "保存中...";
+
+  const { error } = await supabase.rpc("admin_save_attendance_correction", {
+    p_target_date: dateInput.value,
+    p_employee_code: editingRow.employeeId,
+    p_clock_in: clockIn,
+    p_clock_out: clockOut,
+    p_reason: reason
+  });
+
+  saveEditButton.disabled = false;
+  saveEditButton.textContent = "保存";
+
+  if (error) {
+    alert(`修正を保存できませんでした。\n${error.message}`);
+    return;
+  }
+
+  closeEditModal();
+  await loadAttendance();
+}
+
 attendanceBody.addEventListener("click", (event) => {
   const button = event.target.closest("[data-edit]");
   if (button) openEditModal(Number(button.dataset.edit));
@@ -292,7 +336,7 @@ attendanceBody.addEventListener("click", (event) => {
 addCorrectionButton.addEventListener("click", () => openEditModal(0));
 closeModalButton.addEventListener("click", closeEditModal);
 cancelEditButton.addEventListener("click", closeEditModal);
-saveEditButton.addEventListener("click", closeEditModal);
+saveEditButton.addEventListener("click", saveManualCorrection);
 editModal.addEventListener("click", (event) => {
   if (event.target === editModal) closeEditModal();
 });
