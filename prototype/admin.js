@@ -105,13 +105,14 @@ function renderRows() {
         <td>${escapeHtml(row.clockIn)}</td>
         <td>${escapeHtml(row.clockOut)}</td>
         <td>${escapeHtml(row.breakTime)}</td>
+        <td>${escapeHtml(row.leaveTime)}</td>
         <td>${escapeHtml(row.workTime)}</td>
         <td>${escapeHtml(row.auth)}</td>
         <td><span class="status ${row.statusType}">${escapeHtml(row.status)}</span></td>
         <td><button class="button" type="button" data-edit="${index}">修正</button></td>
       </tr>
     `).join("")
-    : '<tr><td colspan="9">対象の勤怠データはありません。</td></tr>';
+    : '<tr><td colspan="10">対象の勤怠データはありません。</td></tr>';
 }
 
 function updateSummary() {
@@ -183,13 +184,14 @@ function closeEditModal() {
 }
 
 function exportCsv() {
-  const header = ["社員ID", "社員名", "出勤", "退勤", "休憩", "実働", "認証", "状態"];
+  const header = ["社員ID", "社員名", "出勤", "退勤", "休憩", "中抜け", "実働", "認証", "状態"];
   const csv = [header, ...rows.map((row) => [
     row.employeeId,
     row.name,
     row.clockIn,
     row.clockOut,
     formatMinutes(row.breakMinutes, { compact: true }),
+    formatMinutes(row.leaveMinutes, { compact: true }),
     row.workTime,
     row.auth,
     row.status
@@ -219,7 +221,9 @@ function buildRows(attendanceRows) {
       clockIn: formatTime(attendanceRow.clock_in_at),
       clockOut: formatTime(attendanceRow.clock_out_at),
       breakMinutes: attendanceRow.break_minutes,
+      leaveMinutes: attendanceRow.leave_minutes,
       breakTime: formatMinutes(attendanceRow.break_minutes, { zeroAsDash: true }),
+      leaveTime: formatMinutes(attendanceRow.leave_minutes, { zeroAsDash: true }),
       workTime: formatMinutes(attendanceRow.work_minutes),
       auth: attendanceRow.latest_auth_method?.toUpperCase() ?? "-",
       status,
