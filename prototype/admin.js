@@ -36,6 +36,7 @@ let rows = [];
 let employees = [];
 let companyId = null;
 let editingRow = null;
+let editingEmployee = null;
 let currentView = "attendance";
 let attendanceSort = { key: "employeeId", direction: "asc" };
 let employeeSort = { key: "employee_code", direction: "asc" };
@@ -46,7 +47,10 @@ employeePanel.style.display = "none";
 employeePanel.innerHTML = `
   <div class="panel-header">
     <h2 class="panel-title">従業員一覧</h2>
-    <button class="button" type="button" id="reloadEmployeesButton">再読み込み</button>
+    <div class="actions">
+      <button class="button primary" type="button" id="addEmployeeButton">従業員追加</button>
+      <button class="button" type="button" id="reloadEmployeesButton">再読み込み</button>
+    </div>
   </div>
   <div class="table-wrap">
     <table>
@@ -58,6 +62,7 @@ employeePanel.innerHTML = `
           <th>PASS打刻</th>
           <th>状態</th>
           <th>登録日</th>
+          <th>操作</th>
         </tr>
       </thead>
       <tbody id="employeeBody"></tbody>
@@ -66,6 +71,7 @@ employeePanel.innerHTML = `
 `;
 document.querySelector(".content").append(employeePanel);
 const employeeBody = document.getElementById("employeeBody");
+const addEmployeeButton = document.getElementById("addEmployeeButton");
 const reloadEmployeesButton = document.getElementById("reloadEmployeesButton");
 
 const punchPanel = document.createElement("section");
@@ -156,6 +162,63 @@ settingsPanel.innerHTML = `
 content.append(settingsPanel);
 const settingsCompanyCode = document.getElementById("settingsCompanyCode");
 const settingsDepartments = document.getElementById("settingsDepartments");
+
+const employeeModal = document.createElement("div");
+employeeModal.className = "modal-backdrop";
+employeeModal.setAttribute("role", "dialog");
+employeeModal.setAttribute("aria-modal", "true");
+employeeModal.setAttribute("aria-labelledby", "employeeEditTitle");
+employeeModal.innerHTML = `
+  <section class="modal">
+    <div class="panel-header">
+      <h2 class="panel-title" id="employeeEditTitle">従業員編集</h2>
+      <button class="button" type="button" id="closeEmployeeModalButton">閉じる</button>
+    </div>
+    <form class="modal-body" id="employeeForm">
+      <div class="field">
+        <label for="employeeCodeInput">社員ID</label>
+        <input id="employeeCodeInput" placeholder="例: E-0016">
+      </div>
+      <div class="field">
+        <label for="employeeNameInput">社員名</label>
+        <input id="employeeNameInput" placeholder="例: 山田 太郎">
+      </div>
+      <div class="field">
+        <label for="employeeDepartmentInput">所属</label>
+        <input id="employeeDepartmentInput" list="employeeDepartmentOptions" placeholder="例: 本社営業部">
+        <datalist id="employeeDepartmentOptions"></datalist>
+      </div>
+      <div class="field">
+        <label for="employeePassInput">PASS</label>
+        <input id="employeePassInput" type="password" placeholder="編集時は空欄なら変更しません">
+      </div>
+      <label class="check-row">
+        <input id="employeePassEnabledInput" type="checkbox" checked>
+        PASS打刻を許可
+      </label>
+      <label class="check-row">
+        <input id="employeeActiveInput" type="checkbox" checked>
+        利用中
+      </label>
+    </form>
+    <div class="modal-footer">
+      <button class="button" type="button" id="cancelEmployeeButton">キャンセル</button>
+      <button class="button primary" type="button" id="saveEmployeeButton">保存</button>
+    </div>
+  </section>
+`;
+document.body.append(employeeModal);
+const closeEmployeeModalButton = document.getElementById("closeEmployeeModalButton");
+const cancelEmployeeButton = document.getElementById("cancelEmployeeButton");
+const saveEmployeeButton = document.getElementById("saveEmployeeButton");
+const employeeForm = document.getElementById("employeeForm");
+const employeeCodeInput = document.getElementById("employeeCodeInput");
+const employeeNameInput = document.getElementById("employeeNameInput");
+const employeeDepartmentInput = document.getElementById("employeeDepartmentInput");
+const employeeDepartmentOptions = document.getElementById("employeeDepartmentOptions");
+const employeePassInput = document.getElementById("employeePassInput");
+const employeePassEnabledInput = document.getElementById("employeePassEnabledInput");
+const employeeActiveInput = document.getElementById("employeeActiveInput");
 
 function escapeHtml(value) {
   return String(value ?? "").replace(/[&<>'"]/g, (character) => ({
@@ -325,6 +388,12 @@ function updateSettingsPanel() {
   settingsDepartments.textContent = getDepartments().join(" / ") || "-";
 }
 
+function updateDepartmentDatalist() {
+  employeeDepartmentOptions.innerHTML = getDepartments()
+    .map((department) => `<option value="${escapeHtml(department)}"></option>`)
+    .join("");
+}
+
 function formatDateTime(timestamp) {
   if (!timestamp) return "-";
   return new Intl.DateTimeFormat("ja-JP", {
@@ -355,9 +424,10 @@ function renderEmployees() {
         <td>${employee.pass_punch_enabled ? "有効" : "無効"}</td>
         <td><span class="status ${employee.is_active ? "ok" : "warn"}">${employee.is_active ? "有効" : "停止"}</span></td>
         <td>${escapeHtml(formatDateTime(employee.created_at))}</td>
+        <td><button class="button" type="button" data-employee-edit="${escapeHtml(employee.employee_code)}">編集</button></td>
       </tr>
     `).join("")
-    : '<tr><td colspan="6">従業員が登録されていません。</td></tr>';
+    : '<tr><td colspan="7">従業員が登録されていません。</td></tr>';
 }
 
 function setView(view) {
@@ -465,6 +535,29 @@ function openEditModal(employeeId) {
 function closeEditModal() {
   editModal.classList.remove("is-open");
   editingRow = null;
+}
+
+function openEmployeeModal(employeeCode = null) {
+  editingEmployee = employeeCode
+    ? employees.find((employee) => employee.employee_code === employeeCode) ?? null
+    : null;
+
+  document.getElementById("employeeEditTitle").textContent = editingEmployee ? "従業員編集" : "従業員追加";
+  employeeCodeInput.value = editingEmployee?.employee_code ?? "";
+  employeeCodeInput.readOnly = Boolean(editingEmployee);
+  employeeNameInput.value = editingEmployee?.employee_name ?? "";
+  employeeDepartmentInput.value = editingEmployee?.department_name ?? (departmentSelect.value !== "すべて" ? departmentSelect.value : "");
+  employeePassInput.value = "";
+  employeePassInput.placeholder = editingEmployee ? "空欄なら変更しません" : "例: 1234";
+  employeePassEnabledInput.checked = editingEmployee?.pass_punch_enabled ?? true;
+  employeeActiveInput.checked = editingEmployee?.is_active ?? true;
+  updateDepartmentDatalist();
+  employeeModal.classList.add("is-open");
+}
+
+function closeEmployeeModal() {
+  employeeModal.classList.remove("is-open");
+  editingEmployee = null;
 }
 
 function exportCsv() {
@@ -616,6 +709,53 @@ async function saveManualCorrection() {
   await loadAttendance();
 }
 
+async function saveEmployee() {
+  const employeeCode = employeeCodeInput.value.trim().toUpperCase();
+  const employeeName = employeeNameInput.value.trim();
+  const departmentName = employeeDepartmentInput.value.trim() || "未設定";
+  const employeePass = employeePassInput.value;
+
+  if (!employeeCode) {
+    alert("社員IDを入力してください。");
+    return;
+  }
+
+  if (!employeeName) {
+    alert("社員名を入力してください。");
+    return;
+  }
+
+  if (!editingEmployee && !employeePass) {
+    alert("新規追加時はPASSを入力してください。");
+    return;
+  }
+
+  saveEmployeeButton.disabled = true;
+  saveEmployeeButton.textContent = "保存中...";
+
+  const { error } = await supabase.rpc("admin_upsert_employee", {
+    p_employee_code: employeeCode,
+    p_employee_name: employeeName,
+    p_department_name: departmentName,
+    p_employee_pass: employeePass || null,
+    p_pass_punch_enabled: employeePassEnabledInput.checked,
+    p_is_active: employeeActiveInput.checked
+  });
+
+  saveEmployeeButton.disabled = false;
+  saveEmployeeButton.textContent = "保存";
+
+  if (error) {
+    alert(`従業員を保存できませんでした。\n${error.message}`);
+    return;
+  }
+
+  closeEmployeeModal();
+  await loadAttendance();
+  await loadEmployees();
+  setView("employees");
+}
+
 attendanceBody.addEventListener("click", (event) => {
   const button = event.target.closest("[data-edit]");
   if (button) openEditModal(button.dataset.edit);
@@ -626,6 +766,20 @@ cancelEditButton.addEventListener("click", closeEditModal);
 saveEditButton.addEventListener("click", saveManualCorrection);
 editModal.addEventListener("click", (event) => {
   if (event.target === editModal) closeEditModal();
+});
+addEmployeeButton.addEventListener("click", () => openEmployeeModal());
+employeeBody.addEventListener("click", (event) => {
+  const button = event.target.closest("[data-employee-edit]");
+  if (button) openEmployeeModal(button.dataset.employeeEdit);
+});
+closeEmployeeModalButton.addEventListener("click", closeEmployeeModal);
+cancelEmployeeButton.addEventListener("click", closeEmployeeModal);
+saveEmployeeButton.addEventListener("click", saveEmployee);
+employeeForm.addEventListener("submit", (event) => {
+  event.preventDefault();
+});
+employeeModal.addEventListener("click", (event) => {
+  if (event.target === employeeModal) closeEmployeeModal();
 });
 exportCsvButton.addEventListener("click", exportCsv);
 exportFilteredCsvButton.addEventListener("click", exportCsv);
